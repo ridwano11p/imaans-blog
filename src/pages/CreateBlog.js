@@ -1,34 +1,54 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
-import { FaImage, FaFilePdf, FaVideo } from 'react-icons/fa';
+import { FaImage, FaFilePdf, FaVideo, FaTimes, FaSpinner } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const CreateBlog = () => {
-  const { theme, darkMode } = useContext(ThemeContext);
+  const { darkMode } = useContext(ThemeContext);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [content, setContent] = useState('');
-  const [year, setYear] = useState('');
-  const [month, setMonth] = useState('');
-  const [day, setDay] = useState('');
+  const [date, setDate] = useState('');
   const [image, setImage] = useState(null);
   const [pdf, setPdf] = useState(null);
   const [video, setVideo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
+
+  const imageInputRef = useRef(null);
+  const pdfInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (unsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [unsavedChanges]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!user) {
       alert('You must be logged in to create a blog post.');
       return;
     }
+
+    setLoading(true);
 
     try {
       // Upload files if they exist
@@ -39,8 +59,8 @@ const CreateBlog = () => {
       // Create new blog post document
       const newBlog = {
         title,
-        author: author || 'Anonymous',
-        date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+        author: author || user.displayName || 'Anonymous',
+        date,
         content,
         imageUrl,
         pdfUrl,
@@ -53,11 +73,14 @@ const CreateBlog = () => {
       const docRef = await addDoc(collection(db, 'blogs'), newBlog);
       console.log('New blog created with ID:', docRef.id);
 
-      // Navigate to home page
+      // Clear the form and navigate to home page
+      clearForm();
       navigate('/');
     } catch (error) {
       console.error('Error creating blog post:', error);
       alert('Error creating blog post. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,111 +90,108 @@ const CreateBlog = () => {
     return await getDownloadURL(storageRef);
   };
 
-  const handleFileUpload = (e, setFile) => {
+  const handleFileUpload = (e, setFile, inputRef) => {
     const file = e.target.files[0];
     setFile(file);
+    setUnsavedChanges(true);
+    inputRef.current.value = ''; // Reset the input value to allow re-uploading the same file
+  };
+
+  const removeFile = (setFile) => {
+    setFile(null);
+    setUnsavedChanges(true);
+  };
+
+  const clearForm = () => {
+    setTitle('');
+    setAuthor('');
+    setContent('');
+    setDate('');
+    setImage(null);
+    setPdf(null);
+    setVideo(null);
+    setUnsavedChanges(false);
+  };
+
+  const handleCancel = () => {
+    if (unsavedChanges) {
+      const confirmCancel = window.confirm('You have unsaved changes. Are you sure you want to cancel?');
+      if (confirmCancel) {
+        clearForm();
+        navigate('/');
+      }
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleInputChange = (e, setter) => {
+    setter(e.target.value);
+    setUnsavedChanges(true);
   };
 
   return (
-    <div className="min-h-screen py-8" style={{ backgroundColor: theme.background, color: theme.text }}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'}`}>
       <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-8">Create Blog</h1>
+        <h1 className="text-4xl font-bold mb-8 text-center">Create Blog</h1>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="title" className="block font-medium">Title</label>
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium mb-2">Title</label>
             <input
               type="text"
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleInputChange(e, setTitle)}
               required
               className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
                 darkMode
-                  ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                  : 'bg-white text-black border-blue-500 focus:border-blue-300'
+                  ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500'
+                  : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
               }`}
             />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="author" className="block font-medium">Author</label>
+          <div>
+            <label htmlFor="author" className="block text-sm font-medium mb-2">Author</label>
             <input
               type="text"
               id="author"
               value={author}
-              onChange={(e) => setAuthor(e.target.value)}
+              onChange={(e) => handleInputChange(e, setAuthor)}
               placeholder="Enter author name (optional)"
               className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
                 darkMode
-                  ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                  : 'bg-white text-black border-blue-500 focus:border-blue-300'
+                  ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500'
+                  : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
               }`}
             />
           </div>
-          <div className="flex space-x-4">
-            <div className="space-y-2 flex-1">
-              <label htmlFor="year" className="block font-medium">Year</label>
-              <input
-                type="number"
-                id="year"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                required
-                min="1900"
-                max="2100"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
-                  darkMode
-                    ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                    : 'bg-white text-black border-blue-500 focus:border-blue-300'
-                }`}
-              />
-            </div>
-            <div className="space-y-2 flex-1">
-              <label htmlFor="month" className="block font-medium">Month</label>
-              <input
-                type="number"
-                id="month"
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                required
-                min="1"
-                max="12"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
-                  darkMode
-                    ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                    : 'bg-white text-black border-blue-500 focus:border-blue-300'
-                }`}
-              />
-            </div>
-            <div className="space-y-2 flex-1">
-              <label htmlFor="day" className="block font-medium">Day</label>
-              <input
-                type="number"
-                id="day"
-                value={day}
-                onChange={(e) => setDay(e.target.value)}
-                required
-                min="1"
-                max="31"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
-                  darkMode
-                    ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                    : 'bg-white text-black border-blue-500 focus:border-blue-300'
-                }`}
-              />
-            </div>
+          <div>
+            <label htmlFor="date" className="block text-sm font-medium mb-2">Date</label>
+            <input
+              type="date"
+              id="date"
+              value={date}
+              onChange={(e) => handleInputChange(e, setDate)}
+              required
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
+                darkMode
+                  ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500'
+                  : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
+              }`}
+            />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="content" className="block font-medium">Content</label>
+          <div>
+            <label htmlFor="content" className="block text-sm font-medium mb-2">Content</label>
             <textarea
               id="content"
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => handleInputChange(e, setContent)}
               required
               rows="10"
               className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
                 darkMode
-                  ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                  : 'bg-white text-black border-blue-500 focus:border-blue-300'
+                  ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500'
+                  : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
               }`}
             ></textarea>
           </div>
@@ -181,73 +201,117 @@ const CreateBlog = () => {
                 type="file"
                 id="image"
                 accept="image/*"
-                onChange={(e) => handleFileUpload(e, setImage)}
+                onChange={(e) => handleFileUpload(e, setImage, imageInputRef)}
                 className="hidden"
+                ref={imageInputRef}
               />
               <label
                 htmlFor="image"
                 className={`flex items-center px-4 py-2 rounded cursor-pointer ${
-                  darkMode ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-                } text-white`}
+                  darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+                } text-white transition duration-300`}
               >
                 <FaImage className="mr-2" /> Upload Image
               </label>
-              {image && <p className="mt-2 text-sm">{image.name}</p>}
+              {image && (
+                <div className="mt-2 flex items-center">
+                  <span className="text-sm mr-2">{image.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(setImage)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <input
                 type="file"
                 id="pdf"
                 accept=".pdf"
-                onChange={(e) => handleFileUpload(e, setPdf)}
+                onChange={(e) => handleFileUpload(e, setPdf, pdfInputRef)}
                 className="hidden"
+                ref={pdfInputRef}
               />
               <label
                 htmlFor="pdf"
                 className={`flex items-center px-4 py-2 rounded cursor-pointer ${
-                  darkMode ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-                } text-white`}
+                  darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'
+                } text-white transition duration-300`}
               >
                 <FaFilePdf className="mr-2" /> Upload PDF
               </label>
-              {pdf && <p className="mt-2 text-sm">{pdf.name}</p>}
+              {pdf && (
+                <div className="mt-2 flex items-center">
+                  <span className="text-sm mr-2">{pdf.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(setPdf)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <input
                 type="file"
                 id="video"
                 accept="video/mp4,video/x-m4v,video/*"
-                onChange={(e) => handleFileUpload(e, setVideo)}
+                onChange={(e) => handleFileUpload(e, setVideo, videoInputRef)}
                 className="hidden"
+                ref={videoInputRef}
               />
               <label
                 htmlFor="video"
-                className={`flex items-center px-4 py-2 rounded cursor-pointer ${
-                  darkMode ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-                } text-white`}
+                className={`flex items-center  px-4 py-2 rounded cursor-pointer ${
+                  darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'
+                } text-white transition duration-300`}
               >
                 <FaVideo className="mr-2" /> Upload Video
               </label>
-              {video && <p className="mt-2 text-sm">{video.name}</p>}
+              {video && (
+                <div className="mt-2 flex items-center">
+                  <span className="text-sm mr-2">{video.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(setVideo)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end space-x-4">
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={handleCancel}
               className={`px-4 py-2 rounded ${
                 darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-300 hover:bg-gray-400'
-              } text-white`}
+              } text-white transition duration-300`}
             >
               Cancel
             </button>
             <button
               type="submit"
+              disabled={loading}
               className={`px-4 py-2 rounded ${
                 darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'
-              } text-white`}
+              } text-white transition duration-300 flex items-center`}
             >
-              Post Blog
+              {loading ? (
+                <>
+                  <FaSpinner className="animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Blog'
+              )}
             </button>
           </div>
         </form>

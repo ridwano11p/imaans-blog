@@ -4,28 +4,24 @@ import { AuthContext } from '../context/AuthContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs, where } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { FaSpinner, FaDownload, FaSearch, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
+import { FaSpinner, FaDownload, FaSearch, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight, FaPlay } from 'react-icons/fa';
 
 const BlogPost = ({ post, darkMode }) => {
   const [expanded, setExpanded] = useState(false);
-  const [mediaAspectRatio, setMediaAspectRatio] = useState(null);
-  const mediaRef = useRef(null);
+  const [imageAspectRatio, setImageAspectRatio] = useState(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const loadMedia = () => {
       if (post.imageUrl) {
         const img = new Image();
-        img.onload = () => setMediaAspectRatio(img.width / img.height);
+        img.onload = () => setImageAspectRatio(img.width / img.height);
         img.src = post.imageUrl;
-      } else if (post.videoUrl && mediaRef.current) {
-        mediaRef.current.addEventListener('loadedmetadata', () => {
-          setMediaAspectRatio(mediaRef.current.videoWidth / mediaRef.current.videoHeight);
-        });
       }
     };
 
     loadMedia();
-  }, [post.imageUrl, post.videoUrl]);
+  }, [post.imageUrl]);
 
   const handleDownload = async () => {
     try {
@@ -46,42 +42,50 @@ const BlogPost = ({ post, darkMode }) => {
 
   const pdfFileName = getPdfFileName(post.pdfUrl);
 
-  const mediaStyle = mediaAspectRatio
-    ? { paddingBottom: `${(1 / mediaAspectRatio) * 100}%` }
+  const imageStyle = imageAspectRatio
+    ? { paddingBottom: `${(1 / imageAspectRatio) * 100}%` }
     : { paddingBottom: '56.25%' }; // Default to 16:9 aspect ratio
 
   return (
     <div className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-      {(post.imageUrl || post.videoUrl) && (
-        <div className="relative w-full" style={mediaStyle}>
-          {post.imageUrl && (
-            <img
-              src={post.imageUrl}
-              alt="Blog post"
-              className="absolute top-0 left-0 w-full h-full object-cover"
-            />
-          )}
-          {post.videoUrl && (
-            <video
-              ref={mediaRef}
-              controls
-              className="absolute top-0 left-0 w-full h-full object-contain"
-            >
-              <source src={post.videoUrl} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          )}
-        </div>
-      )}
       <div className="p-6">
         <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{post.title}</h2>
         <p className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
         <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
+
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-4">
+          {post.imageUrl && (
+            <div className="w-full md:w-1/2 mb-4 md:mb-0">
+              <div className="relative w-full" style={imageStyle}>
+                <img
+                  src={post.imageUrl}
+                  alt="Blog post"
+                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+          {post.videoUrl && (
+            <div className="w-full md:w-1/2">
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                <video
+                  ref={videoRef}
+                  controls
+                  className="absolute top-0 left-0 w-full h-full object-contain rounded-lg"
+                >
+                  <source src={post.videoUrl} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          )}
+        </div>
+
         <p className={`mb-4 ${expanded ? '' : 'line-clamp-3'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.content}</p>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center">
           <button
             onClick={() => setExpanded(!expanded)}
-            className={`px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
+            className={`px-4 py-2 rounded mb-2 sm:mb-0 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
           >
             {expanded ? 'Read Less' : 'Read More'}
           </button>
@@ -103,7 +107,7 @@ const BlogPost = ({ post, darkMode }) => {
 };
 
 const Home = () => {
-  const { theme, darkMode } = useContext(ThemeContext);
+  const { darkMode } = useContext(ThemeContext);
   const { user } = useContext(AuthContext);
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -240,48 +244,50 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen" style={{ backgroundColor: theme.background }}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
   }
 
   if (error) {
-    return <div className="text-center mt-8 text-red-500">{error}</div>;
+    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400 ' : 'text-red-600'}`}>{error}</div>;
   }
 
   return (
-    <div className="min-h-screen py-12" style={{ backgroundColor: theme.background, color: theme.text }}>
-      <div className="max-w-4xl mx-auto px-4">
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+      <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Imaan's Blog</h1>
 
-        <div className="mb-8 flex items-center">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search blogs..."
-            className={`flex-grow px-4 py-2 rounded-l-md focus:outline-none ${
-              darkMode
-                ? 'bg-gray-700 text-white border-gray-600'
-                : 'bg-white text-gray-900 border-gray-300'
-            } border`}
-          />
-          <button
-            onClick={handleSearch}
-            className={`px-4 py-2 rounded-r-md ${
-              darkMode
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-blue-500 hover:bg-blue-600'
-            } text-white transition duration-300 flex items-center`}
-          >
-            {searching ? (
-              <FaSpinner className="animate-spin mr-2" />
-            ) : (
-              <FaSearch className="mr-2" />
-            )}
-            Search
-          </button>
+        <div className="mb-8">
+          <div className="flex items-center max-w-md mx-auto">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search blogs..."
+              className={`flex-grow px-4 py-2 rounded-l-md focus:outline-none ${
+                darkMode
+                  ? 'bg-gray-700 text-white border-gray-600'
+                  : 'bg-white text-gray-900 border-gray-300'
+              } border`}
+            />
+            <button
+              onClick={handleSearch}
+              className={`px-4 py-2 rounded-r-md ${
+                darkMode
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              } text-white transition duration-300 flex items-center`}
+            >
+              {searching ? (
+                <FaSpinner className="animate-spin mr-2" />
+              ) : (
+                <FaSearch className="mr-2" />
+              )}
+              Search
+            </button>
+          </div>
         </div>
 
         {blogs.length === 0 ? (

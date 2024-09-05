@@ -2,12 +2,14 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
+import { FaEnvelope, FaLock, FaSignInAlt, FaSpinner } from 'react-icons/fa';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { theme, darkMode } = useContext(ThemeContext);
+  const [loading, setLoading] = useState(false);
+  const { darkMode } = useContext(ThemeContext);
   const { login, user } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -19,12 +21,16 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
       await login(email, password);
       navigate('/');
     } catch (error) {
-      setError('Failed to log in');
+      setError('Failed to log in. Please check your email and password.');
       console.error('Login error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,51 +39,89 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.background, color: theme.text }}>
-      <div className={`p-8 rounded-lg shadow-lg w-96 ${darkMode ? 'bg-blue-900' : 'bg-white'}`}>
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium mb-2">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
-                darkMode
-                  ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                  : 'bg-gray-100 text-gray-900 border-blue-500 focus:border-blue-300'
-              }`}
-            />
+    <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+      <div className={`max-w-md w-full space-y-8 ${darkMode ? 'bg-gray-700' : 'bg-white'} p-10 rounded-xl shadow-md`}>
+        <div>
+          <h2 className={`mt-6 text-center text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Sign in to your account
+          </h2>
+        </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email-address" className="sr-only">
+                Email address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaEnvelope className={`h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} aria-hidden="true" />
+                </div>
+                <input
+                  id="email-address"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className={`appearance-none rounded-none relative block w-full px-3 py-2 pl-10 ${
+                    darkMode
+                      ? 'bg-gray-600 text-white placeholder-gray-400 border-gray-500 focus:ring-blue-500 focus:border-blue-500'
+                      : 'border-gray-300 placeholder-gray-500 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
+                  } rounded-t-md focus:outline-none focus:z-10 sm:text-sm`}
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaLock className={`h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} aria-hidden="true" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className={`appearance-none rounded-none relative block w-full px-3 py-2 pl-10 ${
+                    darkMode
+                      ? 'bg-gray-600 text-white placeholder-gray-400 border-gray-500 focus:ring-blue-500 focus:border-blue-500'
+                      : 'border-gray-300 placeholder-gray-500 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
+                  } rounded-b-md focus:outline-none focus:z-10 sm:text-sm`}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
-          <div className="mb-6">
-            <label htmlFor="password" className="block text-sm font-medium mb-2">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
+
+          {error && <p className="mt-2 text-center text-sm text-red-600">{error}</p>}
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
                 darkMode
-                  ? 'bg-blue-800 text-white border-orange-500 focus:border-orange-300'
-                  : 'bg-gray-100 text-gray-900 border-blue-500 focus:border-blue-300'
-              }`}
-            />
+                  ? 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              } focus:outline-none transition duration-150 ease-in-out`}
+            >
+              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                {loading ? (
+                  <FaSpinner className="h-5 w-5 text-white animate-spin" aria-hidden="true" />
+                ) : (
+                  <FaSignInAlt className="h-5 w-5 text-white" aria-hidden="true" />
+                )}
+              </span>
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
           </div>
-          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-          <button
-            type="submit"
-            className={`w-full py-2 px-4 rounded-md text-white font-semibold transition-all duration-300 ${
-              darkMode
-                ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700'
-                : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700'
-            }`}
-          >
-            Login
-          </button>
         </form>
       </div>
     </div>
