@@ -5,6 +5,7 @@ import { db, storage } from '../firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs, where } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { FaSpinner, FaDownload, FaSearch, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight, FaPlay } from 'react-icons/fa';
+import StorageInfo from '../components/StorageInfo';
 
 const BlogPost = ({ post, darkMode }) => {
   const [expanded, setExpanded] = useState(false);
@@ -259,8 +260,8 @@ const Home = () => {
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Imaan's Blog</h1>
 
-        <div className="mb-8">
-          <div className="flex items-center max-w-md mx-auto">
+        <div className="mb-8 flex items-center justify-center">
+          <div className="flex items-center max-w-md">
             <input
               type="text"
               value={searchTerm}
@@ -288,6 +289,7 @@ const Home = () => {
               Search
             </button>
           </div>
+          <StorageInfo />
         </div>
 
         {blogs.length === 0 ? (
