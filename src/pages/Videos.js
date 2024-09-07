@@ -3,7 +3,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { db, storage } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { ref, listAll, getDownloadURL } from 'firebase/storage';
-import { FaChevronLeft, FaChevronRight, FaTimes, FaPlay } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaTimes, FaPlay, FaYoutube } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Videos = () => {
@@ -19,19 +19,34 @@ const Videos = () => {
   const fetchVideos = async () => {
     setLoading(true);
     try {
+      // Fetch uploaded videos from storage
       const videosRef = ref(storage, 'videos');
       const videosList = await listAll(videosRef);
-      const fetchedVideos = await Promise.all(
+      const uploadedVideos = await Promise.all(
         videosList.items.map(async (item) => {
           const url = await getDownloadURL(item);
           return {
             id: item.name,
             url: url,
-            name: item.name.split('.').slice(0, -1).join('.') // Remove file extension
+            name: item.name.split('.').slice(0, -1).join('.'), // Remove file extension
+            type: 'uploaded'
           };
         })
       );
-      setVideos(fetchedVideos);
+
+      // Fetch linked YouTube videos from Firestore
+      const blogsRef = collection(db, 'blogs');
+      const blogsSnapshot = await getDocs(blogsRef);
+      const linkedVideos = blogsSnapshot.docs
+        .filter(doc => doc.data().isLinkedVideo && doc.data().videoUrl)
+        .map(doc => ({
+          id: doc.id,
+          url: doc.data().videoUrl,
+          type: 'youtube'
+        }));
+
+      // Combine and set all videos
+      setVideos([...uploadedVideos, ...linkedVideos]);
     } catch (error) {
       console.error('Error fetching videos:', error);
     }
@@ -58,6 +73,12 @@ const Videos = () => {
     setCurrentVideo(videos[prevIndex]);
   };
 
+  const getYouTubeVideoId = (url) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
   if (loading) {
     return (
       <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
@@ -79,15 +100,29 @@ const Videos = () => {
               className={`rounded-lg overflow-hidden shadow-lg ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
               onClick={() => openGallery(video)}
             >
-              <div className="relative h-48">
-                <video src={video.url} className="w-full h-full object-cover" />
+              <div className="relative aspect-video">
+                {video.type === 'uploaded' ? (
+                  <video src={video.url} className="w-full h-full object-cover" />
+                ) : (
+                  <img
+                    src={`https://img.youtube.com/vi/${getYouTubeVideoId(video.url)}/0.jpg`}
+                    alt="YouTube thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                  <FaPlay className="text-white text-4xl" />
+                  {video.type === 'uploaded' ? (
+                    <FaPlay className="text-white text-4xl" />
+                  ) : (
+                    <FaYoutube className="text-white text-4xl" />
+                  )}
                 </div>
               </div>
-              <div className="p-4">
-                <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{video.name}</h2>
-              </div>
+              {video.type === 'uploaded' && (
+                <div className="p-4">
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{video.name}</h2>
+                </div>
+              )}
             </motion.div>
           ))}
         </div>
@@ -109,7 +144,20 @@ const Videos = () => {
               className="relative max-w-4xl max-h-full p-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <video src={currentVideo.url} controls className="max-w-full max-h-[80vh]" />
+              {currentVideo.type === 'uploaded' ? (
+                <video src={currentVideo.url} controls className="max-w-full max-h-[80vh]" />
+              ) : (
+                <iframe
+                  width="560"
+                  height="315"
+                  src={`https://www.youtube.com/embed/${getYouTubeVideoId(currentVideo.url)}`}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="max-w-full max-h-[80vh]"
+                ></iframe>
+              )}
               <button
                 className="absolute top-2 right-2 text-white text-2xl"
                 onClick={closeGallery}

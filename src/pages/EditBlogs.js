@@ -4,7 +4,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { FaEdit, FaTrash, FaTimes, FaSpinner, FaImage, FaFilePdf, FaVideo } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaTimes, FaSpinner, FaImage, FaFilePdf, FaVideo, FaLink } from 'react-icons/fa';
 
 const EditBlogs = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -18,8 +18,10 @@ const EditBlogs = () => {
   const [newImage, setNewImage] = useState(null);
   const [newPdf, setNewPdf] = useState(null);
   const [newVideo, setNewVideo] = useState(null);
-  const [removedFiles, setRemovedFiles] = useState({});
+  const  [removedFiles, setRemovedFiles] = useState({});
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [isLinkedVideo, setIsLinkedVideo] = useState(false);
+  const [videoLink, setVideoLink] = useState('');
 
   const imageInputRef = useRef(null);
   const pdfInputRef = useRef(null);
@@ -66,6 +68,8 @@ const EditBlogs = () => {
     setNewImage(null);
     setNewPdf(null);
     setNewVideo(null);
+    setIsLinkedVideo(blog.isLinkedVideo || false);
+    setVideoLink(blog.isLinkedVideo ? blog.videoUrl : '');
     setShowEditModal(true);
     setUnsavedChanges(false);
   };
@@ -101,7 +105,8 @@ const EditBlogs = () => {
       const blogRef = doc(db, 'blogs', editingBlog.id);
       const updatedBlog = {
         ...editingBlog,
-        titleLower: editingBlog.title.toLowerCase() // Add this line
+        titleLower: editingBlog.title.toLowerCase(),
+        isLinkedVideo: isLinkedVideo
       };
 
       // Handle image
@@ -131,13 +136,15 @@ const EditBlogs = () => {
       }
 
       // Handle video
-      if (newVideo) {
-        if (editingBlog.videoUrl) {
+      if (isLinkedVideo) {
+        updatedBlog.videoUrl = videoLink;
+      } else if (newVideo) {
+        if (editingBlog.videoUrl && !editingBlog.isLinkedVideo) {
           await deleteObject(ref(storage, editingBlog.videoUrl));
         }
         updatedBlog.videoUrl = await uploadFile(newVideo, 'videos');
       } else if (removedFiles.video) {
-        if (editingBlog.videoUrl) {
+        if (editingBlog.videoUrl && !editingBlog.isLinkedVideo) {
           await deleteObject(ref(storage, editingBlog.videoUrl));
         }
         updatedBlog.videoUrl = null;
@@ -169,7 +176,7 @@ const EditBlogs = () => {
       if (blogToDelete.pdfUrl) {
         await deleteObject(ref(storage, blogToDelete.pdfUrl));
       }
-      if (blogToDelete.videoUrl) {
+      if (blogToDelete.videoUrl && !blogToDelete.isLinkedVideo) {
         await deleteObject(ref(storage, blogToDelete.videoUrl));
       }
 
@@ -349,41 +356,73 @@ const EditBlogs = () => {
                 ) : null}
               </div>
               <div className="flex items-center justify-between">
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => handleFileUpload(e, setNewVideo, 'video', videoInputRef)}
-                  className="hidden"
-                  id="newVideo"
-                  ref={videoInputRef}
-                />
-                <label
-                  htmlFor="newVideo"
-                  className={`cursor-pointer px-4 py-2 rounded ${
-                    darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'
-                  } text-white transition-colors duration-300`}
-                >
-                  <FaVideo className="mr-2 inline" /> Upload New Video
-                </label>
-                {(newVideo || (editingBlog.videoUrl && !removedFiles.video)) ? (
-                  <div className="flex items-center">
-                    <span className="mr-2">
-                      {newVideo ? newVideo.name : getFileName(editingBlog.videoUrl)}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (newVideo) {
-                          setNewVideo(null);
-                        } else {
-                          handleRemoveMedia('video');
-                        }
-                      }}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <FaTimes />
-                    </button>
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="isLinkedVideo"
+                    checked={isLinkedVideo}
+                    onChange={() => {
+                      setIsLinkedVideo(!isLinkedVideo);
+                      setNewVideo(null);
+                      setVideoLink('');
+                    }}
+                    className="mr-2"
+                  />
+                  <label htmlFor="isLinkedVideo" className="text-sm">Upload linked video</label>
+                </div>
+                {isLinkedVideo ? (
+                  <div className="flex-grow ml-4">
+                    <input
+                      type="text"
+                      value={videoLink}
+                      onChange={(e) => setVideoLink(e.target.value)}
+                      placeholder="Enter YouTube video URL"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
+                        darkMode
+                          ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500'
+                          : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
+                      }`}
+                    />
                   </div>
-                ) : null}
+                ) : (
+                  <>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleFileUpload(e, setNewVideo, 'video', videoInputRef)}
+                      className="hidden"
+                      id="newVideo"
+                      ref={videoInputRef}
+                    />
+                    <label
+                      htmlFor="newVideo"
+                      className={`cursor-pointer px-4 py-2 rounded ${
+                        darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'
+                      } text-white transition-colors duration-300`}
+                    >
+                      <FaVideo className="mr-2 inline" /> Upload New Video
+                    </label>
+                    {(newVideo || (editingBlog.videoUrl && !removedFiles.video && !editingBlog.isLinkedVideo)) ? (
+                      <div className="flex items-center">
+                        <span className="mr-2">
+                          {newVideo ? newVideo.name : getFileName(editingBlog.videoUrl)}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (newVideo) {
+                              setNewVideo(null);
+                            } else {
+                              handleRemoveMedia('video');
+                            }
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
             <div className="flex justify-end space-x-4">
@@ -410,7 +449,7 @@ const EditBlogs = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div  className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className={`w-96 p-6 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
             <p className="mb-4">Are you sure you want to delete this blog?</p>

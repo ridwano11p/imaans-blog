@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
-import { FaImage, FaFilePdf, FaVideo, FaTimes, FaSpinner } from 'react-icons/fa';
+import { FaImage, FaFilePdf, FaVideo, FaTimes, FaSpinner, FaLink } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -21,6 +21,8 @@ const CreateBlog = () => {
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [isLinkedVideo, setIsLinkedVideo] = useState(false);
+  const [videoLink, setVideoLink] = useState('');
 
   const imageInputRef = useRef(null);
   const pdfInputRef = useRef(null);
@@ -54,18 +56,25 @@ const CreateBlog = () => {
       // Upload files if they exist
       const imageUrl = image ? await uploadFile(image, 'images') : null;
       const pdfUrl = pdf ? await uploadFile(pdf, 'pdfs') : null;
-      const videoUrl = video ? await uploadFile(video, 'videos') : null;
+      let videoUrl = null;
+
+      if (isLinkedVideo) {
+        videoUrl = videoLink;
+      } else if (video) {
+        videoUrl = await uploadFile(video, 'videos');
+      }
 
       // Create new blog post document
       const newBlog = {
         title: title.trim(),
-        titleLower: title.trim().toLowerCase(), // Add this line
+        titleLower: title.trim().toLowerCase(),
         author: author.trim() || user.displayName || 'Anonymous',
         date,
         content,
         imageUrl,
         pdfUrl,
         videoUrl,
+        isLinkedVideo,
         createdAt: new Date(),
         createdBy: user.email,
       };
@@ -111,6 +120,8 @@ const CreateBlog = () => {
     setImage(null);
     setPdf(null);
     setVideo(null);
+    setIsLinkedVideo(false);
+    setVideoLink('');
     setUnsavedChanges(false);
   };
 
@@ -258,33 +269,65 @@ const CreateBlog = () => {
               )}
             </div>
             <div>
-              <input
-                type="file"
-                id="video"
-                accept="video/mp4,video/x-m4v,video/*"
-                onChange={(e) => handleFileUpload(e, setVideo, videoInputRef)}
-                className="hidden"
-                ref={videoInputRef}
-              />
-              <label
-                htmlFor="video"
-                className={`flex items-center  px-4 py-2 rounded cursor-pointer ${
-                  darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'
-                } text-white transition duration-300`}
-              >
-                <FaVideo className="mr-2" /> Upload Video
-              </label>
-              {video && (
-                <div className="mt-2 flex items-center">
-                  <span className="text-sm mr-2">{video.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(setVideo)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <FaTimes />
-                  </button>
+              <div className="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  id="isLinkedVideo"
+                  checked={isLinkedVideo}
+                  onChange={() => {
+                    setIsLinkedVideo(!isLinkedVideo);
+                    setVideo(null);
+                    setVideoLink('');
+                  }}
+                  className="mr-2"
+                />
+                <label htmlFor="isLinkedVideo" className="text-sm">Upload linked video</label>
+              </div>
+              {isLinkedVideo ? (
+                <div>
+                  <input
+                    type="text"
+                    value={videoLink}
+                    onChange={(e) => setVideoLink(e.target.value)}
+                    placeholder="Enter YouTube video URL"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none transition-all duration-300 ${
+                      darkMode
+                        ? 'bg-gray-700 text-white border-gray-600 focus:border-blue-500'
+                        : 'bg-white text-gray-900 border-gray-300 focus:border-blue-500'
+                    }`}
+                  />
                 </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    id="video"
+                    accept="video/mp4,video/x-m4v,video/*"
+                    onChange={(e) => handleFileUpload(e, setVideo, videoInputRef)}
+                    className="hidden"
+                    ref={videoInputRef}
+                  />
+                  <label
+                    htmlFor="video"
+                    className={`flex items-center px-4 py-2 rounded cursor-pointer ${
+                      darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'
+                    } text-white transition duration-300`}
+                  >
+                    <FaVideo className="mr-2" /> Upload Video
+                  </label>
+                  {video && (
+                    <div className="mt-2 flex items-center">
+                      <span className="text-sm mr-2">{video.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(setVideo)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

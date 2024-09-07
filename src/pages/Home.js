@@ -1,5 +1,3 @@
-// src/pages/Home.js
-
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
@@ -34,6 +32,40 @@ const BlogPost = ({ post, darkMode }) => {
     ? { paddingBottom: `${(1 / imageAspectRatio) * 100}%` }
     : { paddingBottom: '56.25%' }; // Default to 16:9 aspect ratio
 
+  const renderVideo = () => {
+    if (post.isLinkedVideo) {
+      // Extract video ID from YouTube URL
+      let videoId = post.videoUrl.split('v=')[1];
+      const ampersandPosition = videoId.indexOf('&');
+      if (ampersandPosition !== -1) {
+        videoId = videoId.substring(0, ampersandPosition);
+      }
+      return (
+        <iframe
+          width="100%"
+          height="100%"
+          src={`https://www.youtube.com/embed/${videoId}`}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="Embedded youtube"
+          className="absolute top-0 left-0 w-full h-full rounded-lg"
+        />
+      );
+    } else {
+      return (
+        <video
+          ref={videoRef}
+          controls
+          className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+        >
+          <source src={post.videoUrl} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      );
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -46,10 +78,10 @@ const BlogPost = ({ post, darkMode }) => {
         <p className={`text-sm mb-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
         <p className={`text-sm mb-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
 
-        <div className="flex flex-col md:flex-row md:space-x-4 mb-4 justify-center items-center">
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-6 justify-center items-stretch">
           {post.imageUrl && (
             <div className={`w-full ${post.videoUrl ? 'md:w-1/2' : ''} mb-4 md:mb-0`}>
-              <div className="relative w-full" style={imageStyle}>
+              <div className="relative w-full h-0" style={imageStyle}>
                 <img
                   src={post.imageUrl}
                   alt="Blog post"
@@ -60,21 +92,16 @@ const BlogPost = ({ post, darkMode }) => {
           )}
           {post.videoUrl && (
             <div className={`w-full ${post.imageUrl ? 'md:w-1/2' : ''}`}>
-              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                <video
-                  ref={videoRef}
-                  controls
-                  className="absolute top-0 left-0 w-full h-full object-contain rounded-lg"
-                >
-                  <source src={post.videoUrl} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
+              <div className="relative w-full h-0 pb-[56.25%]">
+                {renderVideo()}
               </div>
             </div>
           )}
         </div>
 
-        <p className={`mb-4 text-center ${expanded ? '' : 'line-clamp-3'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.content}</p>
+        <div className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <p className={`${expanded ? '' : 'line-clamp-3'}`}>{post.content}</p>
+        </div>
         <div className="flex justify-center">
           <button
             onClick={() => setExpanded(!expanded)}
@@ -201,7 +228,7 @@ const Home = () => {
           disabled={currentPage === 1}
           className={`mx-1 px-2 py-1 rounded ${
             darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'
-          } ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          }   ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <FaAngleDoubleLeft />
         </button>
@@ -250,19 +277,19 @@ const Home = () => {
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className={`text-4xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}
+          className={`text-5xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}
         >
           Imaan's Blog
         </motion.h1>
 
-        <div className="mb-8 flex flex-col items-center justify-center">
-          <form onSubmit={handleSearch} className="w-full max-w-3xl flex items-center">
+        <div className="mb-12 flex flex-col items-center justify-center">
+          <form onSubmit={handleSearch} className="w-full max-w-3xl flex items-center mb-4">
             <input
               type="text"
               value={searchTerm}
@@ -270,15 +297,15 @@ const Home = () => {
               onKeyPress={handleKeyPress}
               placeholder="Search blogs..."
               ref={searchInputRef}
-              className={`flex-grow px-4 py-2 rounded-l-md focus:outline-none ${
+              className={`flex-grow px-4 py-3 rounded-l-md focus:outline-none ${
                 darkMode
-                  ? 'bg-gray-700 text-white border-gray-600'
+                  ? 'bg-gray-800 text-white border-gray-700'
                   : 'bg-white text-gray-900 border-gray-300'
-              } border`}
+              } border-2 focus:border-blue-500 transition duration-300`}
             />
             <button
               type="submit"
-              className={`px-6 py-2 rounded-r-md ${
+              className={`px-6 py-3 rounded-r-md ${
                 darkMode
                   ? 'bg-blue-600 hover:bg-blue-700'
                   : 'bg-blue-500 hover:bg-blue-600'
@@ -292,9 +319,7 @@ const Home = () => {
               Search
             </button>
           </form>
-          <div className="mt-4">
-            <StorageInfo />
-          </div>
+          <StorageInfo />
         </div>
 
         <AnimatePresence>
