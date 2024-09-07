@@ -21,25 +21,34 @@ const StorageInfo = () => {
   const fetchStorageInfo = async () => {
     setLoading(true);
     try {
-      const mediaFolders = ['images', 'pdfs', 'videos'];
+      const mediaFolders = ['images', 'pdfs', 'videos', 'team']; // Added 'team' folder
       let totalFiles = 0;
       let totalSize = 0;
+      const folderInfo = {};
 
       for (const folder of mediaFolders) {
         const folderRef = ref(storage, folder);
         const fileList = await listAll(folderRef);
-        totalFiles += fileList.items.length;
+        const folderFiles = fileList.items.length;
+        totalFiles += folderFiles;
 
+        let folderSize = 0;
         for (const fileRef of fileList.items) {
           const metadata = await getMetadata(fileRef);
+          folderSize += metadata.size;
           totalSize += metadata.size;
         }
+
+        folderInfo[folder] = {
+          files: folderFiles,
+          size: folderSize
+        };
       }
 
       setStorageInfo({
         totalFiles,
         totalSize,
-        mediaFolders
+        folderInfo
       });
     } catch (error) {
       console.error('Error fetching storage info:', error);
@@ -119,9 +128,16 @@ const StorageInfo = () => {
                   )}
                   Total Storage Used: {getSizeDisplay(storageInfo.totalSize).text}
                 </p>
-                <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-                  Media Folders: {storageInfo.mediaFolders.join(', ')}
-                </p>
+                {storageInfo.folderInfo && (
+                  <div className={`mt-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <h3 className="font-semibold mb-2">Folder Information:</h3>
+                    {Object.entries(storageInfo.folderInfo).map(([folder, info]) => (
+                      <div key={folder} className="ml-4 mb-2">
+                        <p><strong>{folder}:</strong> {info.files} files, {formatBytes(info.size)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <p className={`text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>No storage information available.</p>
