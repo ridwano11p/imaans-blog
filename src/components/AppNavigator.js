@@ -1,5 +1,3 @@
-// src/components/AppNavigator.js
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import NavBar from './NavBar';
@@ -16,7 +14,7 @@ import PrivateRoute from './PrivateRoute';
 
 const AppNavigator = () => {
   return (
-    <Router>
+    <Router basename="/imaans-blog">
       <NavBar />
       <Routes>
         <Route path="/" element={<Home />} />
