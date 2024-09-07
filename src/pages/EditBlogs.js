@@ -99,7 +99,10 @@ const EditBlogs = () => {
   const handleSaveChanges = async () => {
     try {
       const blogRef = doc(db, 'blogs', editingBlog.id);
-      const updatedBlog = { ...editingBlog };
+      const updatedBlog = {
+        ...editingBlog,
+        titleLower: editingBlog.title.toLowerCase() // Add this line
+      };
 
       // Handle image
       if (newImage) {
@@ -407,7 +410,7 @@ const EditBlogs = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div  className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className={`w-96 p-6 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
             <p className="mb-4">Are you sure you want to delete this blog?</p>

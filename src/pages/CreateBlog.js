@@ -58,8 +58,9 @@ const CreateBlog = () => {
 
       // Create new blog post document
       const newBlog = {
-        title,
-        author: author || user.displayName || 'Anonymous',
+        title: title.trim(),
+        titleLower: title.trim().toLowerCase(), // Add this line
+        author: author.trim() || user.displayName || 'Anonymous',
         date,
         content,
         imageUrl,

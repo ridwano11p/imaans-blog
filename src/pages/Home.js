@@ -50,11 +50,11 @@ const BlogPost = ({ post, darkMode }) => {
   return (
     <div className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
       <div className="p-6">
-        <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{post.title}</h2>
-        <p className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
-        <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
+        <h2 className={`text-2xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>{post.title}</h2>
+        <p className={`text-sm mb-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
+        <p className={`text-sm mb-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
 
-        <div className="flex flex-col md:flex-row md:space-x-4 mb-4">
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-4 justify-center">
           {post.imageUrl && (
             <div className="w-full md:w-1/2 mb-4 md:mb-0">
               <div className="relative w-full" style={imageStyle}>
@@ -82,8 +82,8 @@ const BlogPost = ({ post, darkMode }) => {
           )}
         </div>
 
-        <p className={`mb-4 ${expanded ? '' : 'line-clamp-3'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.content}</p>
-        <div className="flex flex-wrap justify-between items-center">
+        <p className={`mb-4 text-center ${expanded ? '' : 'line-clamp-3'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.content}</p>
+        <div className="flex flex-wrap justify-center items-center space-x-4">
           <button
             onClick={() => setExpanded(!expanded)}
             className={`px-4 py-2 rounded mb-2 sm:mb-0 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
@@ -120,6 +120,7 @@ const Home = () => {
   const [lastVisible, setLastVisible] = useState(null);
 
   const blogsPerPage = 4;
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     fetchBlogs();
@@ -129,12 +130,13 @@ const Home = () => {
     setLoading(true);
     try {
       let q;
-      if (searchTerm) {
+      if (searchTerm.trim()) {
+        const searchTermLower = searchTerm.toLowerCase();
         q = query(
           collection(db, 'blogs'),
-          where('title', '>=', searchTerm),
-          where('title', '<=', searchTerm + '\uf8ff'),
-          orderBy('title'),
+          where('titleLower', '>=', searchTermLower),
+          where('titleLower', '<=', searchTermLower + '\uf8ff'),
+          orderBy('titleLower'),
           limit(blogsPerPage)
         );
       } else {
@@ -153,8 +155,12 @@ const Home = () => {
       setBlogs(fetchedBlogs);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
 
-      const totalDocs = await getDocs(query(collection(db, 'blogs')));
-      setTotalPages(Math.ceil(totalDocs.size / blogsPerPage));
+      if (!searchTerm.trim()) {
+        const totalDocs = await getDocs(query(collection(db, 'blogs')));
+        setTotalPages(Math.ceil(totalDocs.size / blogsPerPage));
+      } else {
+        setTotalPages(1); // For search results, we'll just show one page
+      }
 
       setLoading(false);
     } catch (err) {
@@ -164,11 +170,18 @@ const Home = () => {
     }
   };
 
-  const handleSearch = async () => {
+  const handleSearch = async (e) => {
+    e.preventDefault();
     setSearching(true);
     setCurrentPage(1);
     await fetchBlogs();
     setSearching(false);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch(e);
+    }
   };
 
   const handlePageChange = (newPage) => {
@@ -260,13 +273,15 @@ const Home = () => {
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Imaan's Blog</h1>
 
-        <div className="mb-8 flex items-center justify-center">
-          <div className="flex items-center max-w-md">
+        <div className="mb-8 flex flex-col items-center justify-center">
+          <form onSubmit={handleSearch} className="w-full max-w-3xl flex items-center">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleKeyPress}
               placeholder="Search blogs..."
+              ref={searchInputRef}
               className={`flex-grow px-4 py-2 rounded-l-md focus:outline-none ${
                 darkMode
                   ? 'bg-gray-700 text-white border-gray-600'
@@ -274,8 +289,8 @@ const Home = () => {
               } border`}
             />
             <button
-              onClick={handleSearch}
-              className={`px-4 py-2 rounded-r-md ${
+              type="submit"
+              className={`px-6 py-2 rounded-r-md ${
                 darkMode
                   ? 'bg-blue-600 hover:bg-blue-700'
                   : 'bg-blue-500 hover:bg-blue-600'
@@ -288,8 +303,10 @@ const Home = () => {
               )}
               Search
             </button>
+          </form>
+          <div className="mt-4">
+            <StorageInfo />
           </div>
-          <StorageInfo />
         </div>
 
         {blogs.length === 0 ? (
