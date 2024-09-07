@@ -1,9 +1,11 @@
+// src/pages/About.js
+
 import React, { useState, useEffect, useContext } from 'react';
 import { ThemeContext } from '../context/ThemeContext';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaYoutube, FaTwitter, FaFacebook, FaInstagram, FaTimes } from 'react-icons/fa';
+import { FaYoutube, FaTwitter, FaFacebook, FaInstagram, FaTimes, FaEnvelope, FaPhone } from 'react-icons/fa';
 
 const About = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -42,7 +44,7 @@ const About = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`p-6 rounded-full shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} flex flex-col items-center`}
+      className={`p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-700' : 'bg-white'} flex flex-col items-center`}
     >
       <img
         src={member.photoURL || 'https://via.placeholder.com/150'}
@@ -52,8 +54,7 @@ const About = () => {
       <h3 className={`text-xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
         {member.firstName} {member.lastName}
       </h3>
-      <p className={`mb-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{member.email}</p>
-      <p className={`mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{member.phone}</p>
+      <p className={`mb-4 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{member.bio.substring(0, 100)}...</p>
       <button
         onClick={() => setSelectedMember(member)}
         className={`px-4 py-2 rounded-full ${
@@ -70,13 +71,15 @@ const About = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 px-4"
+      onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className={`w-full max-w-md p-6 rounded-3xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-xl flex flex-col items-center`}
+        className={`w-full max-w-md p-6 rounded-3xl ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-xl flex flex-col items-center max-h-[90vh] overflow-y-auto`}
+        onClick={(e) => e.stopPropagation()}
       >
         <button onClick={onClose} className={`self-end text-2xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
           <FaTimes />
@@ -90,17 +93,21 @@ const About = () => {
           <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             {member.firstName} {member.lastName}
           </h2>
-          <p className={`mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            <span className="font-semibold">Email:</span> {member.email}
-          </p>
-          <p className={`mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            <span className="font-semibold">Phone:</span> {member.phone}
-          </p>
-          <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            <span className="font-semibold">Bio:</span> {member.bio}
+          <div className={`mb-4 flex items-center justify-center space-x-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <div className="flex items-center">
+              <FaEnvelope className="mr-2" />
+              <span>{member.email}</span>
+            </div>
+            <div className="flex items-center">
+              <FaPhone className="mr-2" />
+              <span>{member.phone}</span>
+            </div>
+          </div>
+          <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            {member.bio}
           </p>
         </div>
-        <div className="flex flex-wrap justify-center gap-2 mt-4">
+        <div className="flex flex-wrap justify-center gap-4 mt-4">
           {member.youtube && (
             <a
               href={member.youtube}
@@ -157,37 +164,50 @@ const About = () => {
   return (
     <div className={`min-h-screen py-12 px-4 sm:px-6 lg:px-8 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <div className="max-w-7xl mx-auto">
-        <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}
+        >
           About Us
-        </h1>
+        </motion.h1>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className={`mb-12 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} max-w-2xl mx-auto`}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className={`mb-12 p-6 rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} max-w-3xl mx-auto`}
         >
           <h2 className={`text-2xl font-bold mb-4 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Our Story</h2>
-          <div className={`text-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'} max-h-60 overflow-y-auto text-center`}>
-            {aboutText || "No information added yet."}
+          <div className={`text-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'} prose max-w-none`}>
+            {aboutText ? (
+              <div dangerouslySetInnerHTML={{ __html: aboutText }} />
+            ) : (
+              <p className="text-center">No information added yet.</p>
+            )}
           </div>
         </motion.div>
 
-        <h2 className={`text-3xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className={`text-3xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}
+        >
           Our Team
-        </h2>
+        </motion.h2>
 
-        {teamMembers.length === 1 ? (
-          <div className="flex justify-center">
-            <TeamMemberCard member={teamMembers[0]} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-items-center">
-            {teamMembers.map(member => (
-              <TeamMemberCard key={member.id} member={member} />
-            ))}
-          </div>
-        )}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center"
+        >
+          {teamMembers.map((member, index) => (
+            <TeamMemberCard key={member.id} member={member} />
+          ))}
+        </motion.div>
 
         <AnimatePresence>
           {selectedMember && (

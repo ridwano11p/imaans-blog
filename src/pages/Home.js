@@ -1,11 +1,13 @@
+// src/pages/Home.js
+
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs, where } from 'firebase/firestore';
-import { ref, getDownloadURL } from 'firebase/storage';
-import { FaSpinner, FaDownload, FaSearch, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight, FaPlay } from 'react-icons/fa';
+import { FaSpinner, FaSearch, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight, FaPlay } from 'react-icons/fa';
 import StorageInfo from '../components/StorageInfo';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BlogPost = ({ post, darkMode }) => {
   const [expanded, setExpanded] = useState(false);
@@ -24,39 +26,29 @@ const BlogPost = ({ post, darkMode }) => {
     loadMedia();
   }, [post.imageUrl]);
 
-  const handleDownload = async () => {
-    try {
-      const url = await getDownloadURL(ref(storage, post.pdfUrl));
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error("Error downloading PDF: ", error);
-      alert("Failed to download PDF. Please try again.");
-    }
-  };
-
-  const getPdfFileName = (url) => {
-    if (!url) return '';
-    const decodedUrl = decodeURIComponent(url);
-    const parts = decodedUrl.split('/');
-    return parts[parts.length - 1].split('?')[0];
-  };
-
-  const pdfFileName = getPdfFileName(post.pdfUrl);
+  const containerStyle = post.imageUrl && post.videoUrl
+    ? 'max-w-4xl'
+    : 'max-w-2xl';
 
   const imageStyle = imageAspectRatio
     ? { paddingBottom: `${(1 / imageAspectRatio) * 100}%` }
     : { paddingBottom: '56.25%' }; // Default to 16:9 aspect ratio
 
   return (
-    <div className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'} ${containerStyle} mx-auto`}
+    >
       <div className="p-6">
         <h2 className={`text-2xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>{post.title}</h2>
         <p className={`text-sm mb-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
         <p className={`text-sm mb-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
 
-        <div className="flex flex-col md:flex-row md:space-x-4 mb-4 justify-center">
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-4 justify-center items-center">
           {post.imageUrl && (
-            <div className="w-full md:w-1/2 mb-4 md:mb-0">
+            <div className={`w-full ${post.videoUrl ? 'md:w-1/2' : ''} mb-4 md:mb-0`}>
               <div className="relative w-full" style={imageStyle}>
                 <img
                   src={post.imageUrl}
@@ -67,7 +59,7 @@ const BlogPost = ({ post, darkMode }) => {
             </div>
           )}
           {post.videoUrl && (
-            <div className="w-full md:w-1/2">
+            <div className={`w-full ${post.imageUrl ? 'md:w-1/2' : ''}`}>
               <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                 <video
                   ref={videoRef}
@@ -83,27 +75,16 @@ const BlogPost = ({ post, darkMode }) => {
         </div>
 
         <p className={`mb-4 text-center ${expanded ? '' : 'line-clamp-3'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{post.content}</p>
-        <div className="flex flex-wrap justify-center items-center space-x-4">
+        <div className="flex justify-center">
           <button
             onClick={() => setExpanded(!expanded)}
-            className={`px-4 py-2 rounded mb-2 sm:mb-0 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
+            className={`px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
           >
             {expanded ? 'Read Less' : 'Read More'}
           </button>
-          {post.pdfUrl && (
-            <div className="flex items-center">
-              <span className={`mr-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{pdfFileName}</span>
-              <button
-                onClick={handleDownload}
-                className={`flex items-center px-4 py-2 rounded ${darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white transition duration-300`}
-              >
-                <FaDownload className="mr-2" /> Download PDF
-              </button>
-            </div>
-          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -271,7 +252,14 @@ const Home = () => {
   return (
     <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
       <div className="max-w-6xl mx-auto px-4">
-        <h1 className={`text-4xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Imaan's Blog</h1>
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className={`text-4xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}
+        >
+          Imaan's Blog
+        </motion.h1>
 
         <div className="mb-8 flex flex-col items-center justify-center">
           <form onSubmit={handleSearch} className="w-full max-w-3xl flex items-center">
@@ -309,15 +297,22 @@ const Home = () => {
           </div>
         </div>
 
-        {blogs.length === 0 ? (
-          <p className={`text-center text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            No blogs found. {user ? 'Create your first blog!' : 'Login to create a blog!'}
-          </p>
-        ) : (
-          blogs.map((post) => (
-            <BlogPost key={post.id} post={post} darkMode={darkMode} />
-          ))
-        )}
+        <AnimatePresence>
+          {blogs.length === 0 ? (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className={`text-center text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
+            >
+              No blogs found. {user ? 'Create your first blog!' : 'Login to create a blog!'}
+            </motion.p>
+          ) : (
+            blogs.map((post) => (
+              <BlogPost key={post.id} post={post} darkMode={darkMode} />
+            ))
+          )}
+        </AnimatePresence>
 
         {renderPagination()}
       </div>

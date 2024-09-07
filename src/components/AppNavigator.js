@@ -1,3 +1,5 @@
+// src/components/AppNavigator.js
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import NavBar from './NavBar';
@@ -7,6 +9,9 @@ import Login from '../pages/Login';
 import CreateBlog from '../pages/CreateBlog';
 import EditBlogs from '../pages/EditBlogs';
 import EditAbout from '../pages/EditAbout';
+import Photos from '../pages/Photos';
+import Videos from '../pages/Videos';
+import Publications from '../pages/Publications';
 import PrivateRoute from './PrivateRoute';
 
 const AppNavigator = () => {
@@ -17,6 +22,9 @@ const AppNavigator = () => {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/photos" element={<Photos />} />
+        <Route path="/videos" element={<Videos />} />
+        <Route path="/publications" element={<Publications />} />
         <Route path="/create-blog" element={
           <PrivateRoute>
             <CreateBlog />
