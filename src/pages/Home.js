@@ -1,345 +1,99 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
-import { AuthContext } from '../context/AuthContext';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, startAfter, getDocs, where } from 'firebase/firestore';
-import { FaSpinner, FaSearch, FaChevronLeft, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight, FaPlay } from 'react-icons/fa';
-import StorageInfo from '../components/StorageInfo';
-import { motion, AnimatePresence } from 'framer-motion';
-
-const BlogPost = ({ post, darkMode }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [imageAspectRatio, setImageAspectRatio] = useState(null);
-  const videoRef = useRef(null);
-
-  useEffect(() => {
-    const loadMedia = () => {
-      if (post.imageUrl) {
-        const img = new Image();
-        img.onload = () => setImageAspectRatio(img.width / img.height);
-        img.src = post.imageUrl;
-      }
-    };
-
-    loadMedia();
-  }, [post.imageUrl]);
-
-  const containerStyle = post.imageUrl && post.videoUrl
-    ? 'max-w-4xl'
-    : 'max-w-2xl';
-
-  const imageStyle = imageAspectRatio
-    ? { paddingBottom: `${(1 / imageAspectRatio) * 100}%` }
-    : { paddingBottom: '56.25%' }; // Default to 16:9 aspect ratio
-
-  const renderVideo = () => {
-    if (post.isLinkedVideo) {
-      // Extract video ID from YouTube URL
-      let videoId = post.videoUrl.split('v=')[1];
-      const ampersandPosition = videoId.indexOf('&');
-      if (ampersandPosition !== -1) {
-        videoId = videoId.substring(0, ampersandPosition);
-      }
-      return (
-        <iframe
-          width="100%"
-          height="100%"
-          src={`https://www.youtube.com/embed/${videoId}`}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          title="Embedded youtube"
-          className="absolute top-0 left-0 w-full h-full rounded-lg"
-        />
-      );
-    } else {
-      return (
-        <video
-          ref={videoRef}
-          controls
-          className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
-        >
-          <source src={post.videoUrl} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      );
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'} ${containerStyle} mx-auto`}
-    >
-      <div className="p-6">
-        <h2 className={`text-2xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>{post.title}</h2>
-        <p className={`text-sm mb-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
-        <p className={`text-sm mb-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
-
-        <div className="flex flex-col md:flex-row md:space-x-4 mb-6 justify-center items-stretch">
-          {post.imageUrl && (
-            <div className={`w-full ${post.videoUrl ? 'md:w-1/2' : ''} mb-4 md:mb-0`}>
-              <div className="relative w-full h-0" style={imageStyle}>
-                <img
-                  src={post.imageUrl}
-                  alt="Blog post"
-                  className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
-                />
-              </div>
-            </div>
-          )}
-          {post.videoUrl && (
-            <div className={`w-full ${post.imageUrl ? 'md:w-1/2' : ''}`}>
-              <div className="relative w-full h-0 pb-[56.25%]">
-                {renderVideo()}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          <p className={`${expanded ? '' : 'line-clamp-3'}`}>{post.content}</p>
-        </div>
-        <div className="flex justify-center">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className={`px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
-          >
-            {expanded ? 'Read Less' : 'Read More'}
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { FaSpinner } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import Banner from '../components/Banner';
 
 const Home = () => {
   const { darkMode } = useContext(ThemeContext);
-  const { user } = useContext(AuthContext);
-  const [blogs, setBlogs] = useState([]);
+  const [latestBlogs, setLatestBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [lastVisible, setLastVisible] = useState(null);
-
-  const blogsPerPage = 4;
-  const searchInputRef = useRef(null);
 
   useEffect(() => {
-    fetchBlogs();
-  }, [currentPage]);
-
-  const fetchBlogs = async () => {
-    setLoading(true);
-    try {
-      let q;
-      if (searchTerm.trim()) {
-        const searchTermLower = searchTerm.toLowerCase();
-        q = query(
-          collection(db, 'blogs'),
-          where('titleLower', '>=', searchTermLower),
-          where('titleLower', '<=', searchTermLower + '\uf8ff'),
-          orderBy('titleLower'),
-          limit(blogsPerPage)
-        );
-      } else {
-        q = query(collection(db, 'blogs'), orderBy('createdAt', 'desc'), limit(blogsPerPage));
-        if (lastVisible && currentPage > 1) {
-          q = query(q, startAfter(lastVisible));
-        }
+    const fetchLatestBlogs = async () => {
+      try {
+        const q = query(collection(db, 'blogs'), orderBy('createdAt', 'desc'), limit(3));
+        const querySnapshot = await getDocs(q);
+        const blogs = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setLatestBlogs(blogs);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching latest blogs: ", err);
+        setError("Failed to fetch latest blogs. Please try again later.");
+        setLoading(false);
       }
+    };
 
-      const querySnapshot = await getDocs(q);
-      const fetchedBlogs = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      setBlogs(fetchedBlogs);
-      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
-
-      if (!searchTerm.trim()) {
-        const totalDocs = await getDocs(query(collection(db, 'blogs')));
-        setTotalPages(Math.ceil(totalDocs.size / blogsPerPage));
-      } else {
-        setTotalPages(1); // For search results, we'll just show one page
-      }
-
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching blogs: ", err);
-      setError("Failed to fetch blogs. Please try again later.");
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setSearching(true);
-    setCurrentPage(1);
-    await fetchBlogs();
-    setSearching(false);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch(e);
-    }
-  };
-
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
-
-  const renderPagination = () => {
-    const pageNumbers = [];
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, startPage + 4);
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`mx-1 px-3 py-1 rounded ${
-            i === currentPage
-              ? darkMode
-                ? 'bg-blue-600 text-white'
-                : 'bg-blue-500 text-white'
-              : darkMode
-              ? 'bg-gray-700 text-white'
-              : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    return (
-      <div className="flex justify-center items-center mt-8">
-        <button
-          onClick={() => handlePageChange(1)}
-          disabled={currentPage === 1}
-          className={`mx-1 px-2 py-1 rounded ${
-            darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'
-          }   ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <FaAngleDoubleLeft />
-        </button>
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={`mx-1 px-2 py-1 rounded ${
-            darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'
-          } ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <FaChevronLeft />
-        </button>
-        {pageNumbers}
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={`mx-1 px-2 py-1 rounded ${
-            darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'
-          } ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <FaChevronRight />
-        </button>
-        <button
-          onClick={() => handlePageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className={`mx-1 px-2 py-1 rounded ${
-            darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'
-          } ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <FaAngleDoubleRight />
-        </button>
-      </div>
-    );
-  };
+    fetchLatestBlogs();
+  }, []);
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
   }
 
   if (error) {
-    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400 ' : 'text-red-600'}`}>{error}</div>;
+    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</div>;
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <div className="max-w-6xl mx-auto px-4">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className={`text-5xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}
-        >
-          Imaan's Blog
-        </motion.h1>
-
-        <div className="mb-12 flex flex-col items-center justify-center">
-          <form onSubmit={handleSearch} className="w-full max-w-3xl flex items-center mb-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Search blogs..."
-              ref={searchInputRef}
-              className={`flex-grow px-4 py-3 rounded-l-md focus:outline-none ${
-                darkMode
-                  ? 'bg-gray-800 text-white border-gray-700'
-                  : 'bg-white text-gray-900 border-gray-300'
-              } border-2 focus:border-blue-500 transition duration-300`}
-            />
-            <button
-              type="submit"
-              className={`px-6 py-3 rounded-r-md ${
-                darkMode
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'bg-blue-500 hover:bg-blue-600'
-              } text-white transition duration-300 flex items-center`}
-            >
-              {searching ? (
-                <FaSpinner className="animate-spin mr-2" />
-              ) : (
-                <FaSearch className="mr-2" />
-              )}
-              Search
-            </button>
-          </form>
-          <StorageInfo />
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <Banner />
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="mb-16">
+          <h2 className={`text-3xl font-semibold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Our Mission</h2>
+          <p className={`text-lg mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Travel To End FGM is dedicated to raising awareness and promoting action to end Female Genital Mutilation (FGM) globally. Through education, advocacy, and community engagement, we strive to protect the rights and well-being of girls and women worldwide.
+          </p>
+          <Link to="/about/what-we-do" className={`inline-block px-6 py-3 rounded-md ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}>
+            Learn More About Our Work
+          </Link>
         </div>
 
-        <AnimatePresence>
-          {blogs.length === 0 ? (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className={`text-center text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}
-            >
-              No blogs found. {user ? 'Create your first blog!' : 'Login to create a blog!'}
-            </motion.p>
-          ) : (
-            blogs.map((post) => (
-              <BlogPost key={post.id} post={post} darkMode={darkMode} />
-            ))
-          )}
-        </AnimatePresence>
+        <div className="mb-16">
+          <h2 className={`text-3xl font-semibold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Latest Impact Stories</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {latestBlogs.map((blog) => (
+              <div key={blog.id} className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                {blog.imageUrl && (
+                  <img src={blog.imageUrl} alt={blog.title} className="w-full h-48 object-cover" />
+                )}
+                <div className="p-4">
+                  <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{blog.title}</h3>
+                  <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{blog.date}</p>
+                  <Link to={`/impact-stories#${blog.id}`} className={`inline-block px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}>
+                    Read More
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 text-center">
+            <Link to="/impact-stories" className={`inline-block px-6 py-3 rounded-md ${darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white transition duration-300`}>
+              View All Impact Stories
+            </Link>
+          </div>
+        </div>
 
-        {renderPagination()}
+        <div className="mb-16">
+          <h2 className={`text-3xl font-semibold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Get Involved</h2>
+          <p className={`text-lg mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Join us in our mission to end FGM. Whether you're looking to volunteer, donate, or spread awareness, your support can make a significant impact in the lives of girls and women around the world.
+          </p>
+          <Link to="/contact" className={`inline-block px-6 py-3 rounded-md ${darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white transition duration-300`}>
+            Contact Us to Get Involved
+          </Link>
+        </div>
       </div>
     </div>
   );
