@@ -6,9 +6,6 @@ import { db, storage } from '../../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { FaSpinner } from 'react-icons/fa';
-import imageCompression from 'browser-image-compression';
-
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const CreatePhoto = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -26,24 +23,10 @@ const CreatePhoto = () => {
     }
   }, [user, navigate]);
 
-  const handlePhotoChange = async (e) => {
+  const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > MAX_IMAGE_SIZE) {
-        setError(`Image size should be less than ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`);
-        return;
-      }
-      
-      try {
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: MAX_IMAGE_SIZE / (1024 * 1024),
-          maxWidthOrHeight: 1920
-        });
-        setPhoto(compressedFile);
-      } catch (err) {
-        console.error("Error compressing image: ", err);
-        setError("Failed to process image. Please try again.");
-      }
+      setPhoto(file);
     }
   };
 

@@ -9,6 +9,8 @@ import Login from '../pages/Login';
 import Create from '../pages/Create';
 import Edit from '../pages/Edit';
 import PrivateRoute from './PrivateRoute';
+import ArticlePage from '../pages/ArticlePage';
+import TagPage from '../pages/TagPage';
 
 // About Us pages
 import WhoWeAre from '../pages/About/WhoWeAre';
@@ -32,6 +34,7 @@ import CreatePDF from '../pages/CreatePages/CreatePDF';
 import CreatePhoto from '../pages/CreatePages/CreatePhoto';
 import CreateContactInfo from '../pages/CreatePages/CreateContactInfo';
 import CreateBanner from '../pages/CreatePages/CreateBanner';
+import CreateFeatureStory from '../pages/CreatePages/CreateFeatureStory';
 
 // Edit pages
 import EditBlog from '../pages/EditPages/EditBlog';
@@ -42,6 +45,7 @@ import EditPDF from '../pages/EditPages/EditPDF';
 import EditPhoto from '../pages/EditPages/EditPhoto';
 import EditContactInfo from '../pages/EditPages/EditContactInfo';
 import EditBanner from '../pages/EditPages/EditBanner';
+import EditFeatureStory from '../pages/EditPages/EditFeatureStory';
 
 const AppNavigator = () => {
   return (
@@ -57,6 +61,8 @@ const AppNavigator = () => {
         <Route path="/gallery/photos" element={<><Photos /><Footer /></>} />
         <Route path="/contact" element={<><Contact /><Footer /></>} />
         <Route path="/login" element={<><Login /><Footer /></>} />
+        <Route path="/article/:id" element={<><ArticlePage /><Footer /></>} />
+        <Route path="/tag/:tag" element={<><TagPage /><Footer /></>} />
         <Route path="/create" element={
           <PrivateRoute>
             <Create />
@@ -110,6 +116,11 @@ const AppNavigator = () => {
             <CreateBanner />
           </PrivateRoute>
         } />
+        <Route path="/create/feature-story" element={
+          <PrivateRoute>
+            <CreateFeatureStory />
+          </PrivateRoute>
+        } />
         {/* Edit Routes */}
         <Route path="/edit/blogs" element={
           <PrivateRoute>
@@ -149,6 +160,11 @@ const AppNavigator = () => {
         <Route path="/edit/banner" element={
           <PrivateRoute>
             <EditBanner />
+          </PrivateRoute>
+        } />
+        <Route path="/edit/feature-story" element={
+          <PrivateRoute>
+            <EditFeatureStory />
           </PrivateRoute>
         } />
       </Routes>

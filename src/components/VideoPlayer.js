@@ -10,20 +10,20 @@ const VideoPlayer = ({ videoUrl, isYouTubeVideo }) => {
     }
 
     return (
-      <div className="aspect-w-16 aspect-h-9">
+      <div className="w-full h-full relative">
         <iframe
           src={`https://www.youtube.com/embed/${videoId}`}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
           title="YouTube video player"
-          className="w-full h-full"
+          className="absolute inset-0 w-full h-full"
         ></iframe>
       </div>
     );
   } else {
     return (
-      <div className="aspect-w-16 aspect-h-9">
+      <div className="w-full h-full">
         <video controls className="w-full h-full">
           <source src={videoUrl} type="video/mp4" />
           Your browser does not support the video tag.

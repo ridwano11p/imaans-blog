@@ -6,7 +6,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { FaSpinner, FaTimes } from 'react-icons/fa';
 
-const CreateBlog = () => {
+const CreateFeatureStory = () => {
   const { darkMode } = useContext(ThemeContext);
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
@@ -87,7 +87,7 @@ const CreateBlog = () => {
       let youtubeId = null;
 
       if (image) {
-        const imageRef = ref(storage, `blog_images/${Date.now()}_${image.name}`);
+        const imageRef = ref(storage, `feature_story_images/${Date.now()}_${image.name}`);
         await uploadBytes(imageRef, image);
         imageUrl = await getDownloadURL(imageRef);
       }
@@ -96,15 +96,15 @@ const CreateBlog = () => {
         youtubeId = extractYoutubeId(youTubeUrl);
         videoUrl = youTubeUrl;
       } else if (video) {
-        const videoRef = ref(storage, `blog_videos/${Date.now()}_${video.name}`);
+        const videoRef = ref(storage, `feature_story_videos/${Date.now()}_${video.name}`);
         await uploadBytes(videoRef, video);
         videoUrl = await getDownloadURL(videoRef);
       }
 
-      const blogData = {
+      const featureStoryData = {
         title: title.trim(),
         content: content.trim(),
-        author: author.trim(), // Add author to blogData
+        author: author.trim(), // Add author to featureStoryData
         imageUrl,
         videoUrl,
         youtubeId,
@@ -114,11 +114,11 @@ const CreateBlog = () => {
         updatedAt: new Date()
       };
 
-      await addDoc(collection(db, 'blogs'), blogData);
-      navigate('/impact-stories');
+      await addDoc(collection(db, 'featureStories'), featureStoryData);
+      navigate('/');
     } catch (err) {
-      console.error("Error creating blog post: ", err);
-      setError("Failed to create blog post. Please try again.");
+      console.error("Error creating feature story: ", err);
+      setError("Failed to create feature story. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -128,7 +128,7 @@ const CreateBlog = () => {
     <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <div className="max-w-4xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-          Create New Blog Post
+          Create New Feature Story
         </h1>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -270,7 +270,7 @@ const CreateBlog = () => {
             {loading ? (
               <FaSpinner className="animate-spin mx-auto" />
             ) : (
-              'Create Blog Post'
+              'Create Feature Story'
             )}
           </button>
         </form>
@@ -284,4 +284,4 @@ const CreateBlog = () => {
   );
 };
 
-export default CreateBlog;
+export default CreateFeatureStory;

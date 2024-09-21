@@ -2,13 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db, storage } from '../../firebase';
-import { collection, query, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
-import { FaSpinner, FaEdit, FaTrash } from 'react-icons/fa';
-import imageCompression from 'browser-image-compression';
-
-const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+import { FaSpinner, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 
 const EditBlog = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -21,6 +17,10 @@ const EditBlog = () => {
   const [newVideo, setNewVideo] = useState(null);
   const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
   const [youTubeUrl, setYouTubeUrl] = useState('');
+  const [tags, setTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
+  const [removeImage, setRemoveImage] = useState(false);
+  const [removeVideo, setRemoveVideo] = useState(false);
 
   useEffect(() => {
     fetchBlogs();
@@ -50,37 +50,26 @@ const EditBlog = () => {
     setNewVideo(null);
     setIsYouTubeVideo(blog.isYouTubeVideo || false);
     setYouTubeUrl(blog.videoUrl || '');
+    setTags(blog.tags || []);
+    setRemoveImage(false);
+    setRemoveVideo(false);
   };
 
-  const handleImageChange = async (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > MAX_IMAGE_SIZE) {
-        setError(`Image size should be less than ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`);
-        return;
-      }
-      
-      try {
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: MAX_IMAGE_SIZE / (1024 * 1024),
-          maxWidthOrHeight: 1920
-        });
-        setNewImage(compressedFile);
-      } catch (err) {
-        console.error("Error compressing image: ", err);
-        setError("Failed to process image. Please try again.");
-      }
+      setNewImage(file);
+      setRemoveImage(false);
     }
   };
 
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > MAX_VIDEO_SIZE) {
-        setError(`Video size should be less than ${MAX_VIDEO_SIZE / (1024 * 1024)}MB`);
-        return;
-      }
       setNewVideo(file);
+      setRemoveVideo(false);
+      setIsYouTubeVideo(false);
+      setYouTubeUrl('');
     }
   };
 
@@ -92,6 +81,23 @@ const EditBlog = () => {
   const extractYoutubeId = (url) => {
     const match = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11})/);
     return match ? match[1] : null;
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleRemoveYouTubeVideo = () => {
+    setYouTubeUrl('');
+    setIsYouTubeVideo(false);
+    setRemoveVideo(true);
   };
 
   const handleUpdate = async (e) => {
@@ -122,44 +128,55 @@ const EditBlog = () => {
       let updateData = {
         title: editingBlog.title.trim(),
         content: editingBlog.content.trim(),
+        author: editingBlog.author.trim(),
         isYouTubeVideo,
+        tags,
         updatedAt: new Date()
       };
 
-      if (newImage) {
-        // Delete old image if it exists
+      if (removeImage) {
         if (editingBlog.imageUrl) {
           const oldImageRef = ref(storage, editingBlog.imageUrl);
           await deleteObject(oldImageRef);
         }
-
+        updateData.imageUrl = null;
+      } else if (newImage) {
+        if (editingBlog.imageUrl) {
+          const oldImageRef = ref(storage, editingBlog.imageUrl);
+          await deleteObject(oldImageRef);
+        }
         const imageRef = ref(storage, `blog_images/${Date.now()}_${newImage.name}`);
         await uploadBytes(imageRef, newImage);
         const imageUrl = await getDownloadURL(imageRef);
         updateData.imageUrl = imageUrl;
       }
 
-      if (isYouTubeVideo) {
+      if (removeVideo) {
+        if (editingBlog.videoUrl && !editingBlog.isYouTubeVideo) {
+          const oldVideoRef = ref(storage, editingBlog.videoUrl);
+          await deleteObject(oldVideoRef);
+        }
+        updateData.videoUrl = null;
+        updateData.youtubeId = null;
+        updateData.isYouTubeVideo = false;
+      } else if (isYouTubeVideo && youTubeUrl) {
         updateData.videoUrl = youTubeUrl;
         updateData.youtubeId = extractYoutubeId(youTubeUrl);
-
-        // Delete old video if it exists and it's not a YouTube video
         if (editingBlog.videoUrl && !editingBlog.isYouTubeVideo) {
           const oldVideoRef = ref(storage, editingBlog.videoUrl);
           await deleteObject(oldVideoRef);
         }
       } else if (newVideo) {
-        // Delete old video if it exists
         if (editingBlog.videoUrl) {
           const oldVideoRef = ref(storage, editingBlog.videoUrl);
           await deleteObject(oldVideoRef);
         }
-
         const videoRef = ref(storage, `blog_videos/${Date.now()}_${newVideo.name}`);
         await uploadBytes(videoRef, newVideo);
         const videoUrl = await getDownloadURL(videoRef);
         updateData.videoUrl = videoUrl;
-        delete updateData.youtubeId;
+        updateData.youtubeId = null;
+        updateData.isYouTubeVideo = false;
       }
 
       await updateDoc(blogRef, updateData);
@@ -186,12 +203,27 @@ const EditBlog = () => {
           const videoRef = ref(storage, blogToDelete.videoUrl);
           await deleteObject(videoRef);
         }
+
         await deleteDoc(doc(db, 'blogs', blogId));
 
-        // Check if this was the last item in the collection
+        const batch = writeBatch(db);
+        const tagsQuery = query(collection(db, 'tags'));
+        const tagsSnapshot = await getDocs(tagsQuery);
+        tagsSnapshot.forEach((tagDoc) => {
+          const tagData = tagDoc.data();
+          if (tagData.blogIds && tagData.blogIds.includes(blogId)) {
+            const updatedBlogIds = tagData.blogIds.filter(id => id !== blogId);
+            if (updatedBlogIds.length === 0) {
+              batch.delete(tagDoc.ref);
+            } else {
+              batch.update(tagDoc.ref, { blogIds: updatedBlogIds });
+            }
+          }
+        });
+        await batch.commit();
+
         const blogsSnapshot = await getDocs(collection(db, 'blogs'));
         if (blogsSnapshot.empty) {
-          // If the collection is now empty, delete the entire 'blog_images' and 'blog_videos' folders in Storage
           const imagesFolderRef = ref(storage, 'blog_images');
           const videosFolderRef = ref(storage, 'blog_videos');
 
@@ -250,6 +282,20 @@ const EditBlog = () => {
               />
             </div>
             <div>
+              <label htmlFor="author" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Author</label>
+              <input
+                type="text"
+                id="author"
+                value={editingBlog.author}
+                onChange={(e) => setEditingBlog({...editingBlog, author: e.target.value})}
+                required
+                minLength={2}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                }`}
+              />
+            </div>
+            <div>
               <label htmlFor="content" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Content</label>
               <textarea
                 id="content"
@@ -264,7 +310,21 @@ const EditBlog = () => {
               ></textarea>
             </div>
             <div>
-              <label htmlFor="image" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>New Image</label>
+              <label htmlFor="image" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Image</label>
+              {editingBlog.imageUrl && !removeImage && (
+                <div className="mb-2">
+                  <img src={editingBlog.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
+                  <button
+                    type="button"
+                    onClick={() => setRemoveImage(true)}
+                    className={`mt-2 px-2 py-1 rounded ${
+                      darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                    } text-white transition duration-300`}
+                  >
+                    Remove Image
+                  </button>
+                </div>
+              )}
               <input
                 type="file"
                 id="image"
@@ -280,31 +340,120 @@ const EditBlog = () => {
                 <input
                   type="checkbox"
                   checked={isYouTubeVideo}
-                  onChange={() => setIsYouTubeVideo(!isYouTubeVideo)}
+                  onChange={(e) => {
+                    setIsYouTubeVideo(e.target.checked);
+                    if (!e.target.checked) {
+                      setYouTubeUrl('');
+                    }
+                  }}
                   className="mr-2"
                 />
                 YouTube Video
               </label>
               {isYouTubeVideo ? (
-                <input
-                  type="url"
-                  value={youTubeUrl}
-                  onChange={(e) => setYouTubeUrl(e.target.value)}
-                  placeholder="Enter YouTube URL"
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
-                  }`}
-                />
+                <div>
+                  <div className="flex mb-2">
+                    <input
+                      type="url"
+                      value={youTubeUrl}
+                      onChange={(e) => setYouTubeUrl(e.target.value)}
+                      placeholder="Enter YouTube URL"
+                      className={`flex-grow px-3 py-2 border rounded-l-md ${
+                        darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveYouTubeVideo}
+                      className={`px-4 py-2 rounded-r-md ${
+                        darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                      } text-white`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {youTubeUrl && (
+                    <div className="mt-2">
+                      <iframe
+                        width="560"
+                        height="315"
+                        src={`https://www.youtube.com/embed/${extractYoutubeId(youTubeUrl)}`}
+                        title="YouTube video player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  )}
+                </div>
               ) : (
+                <div>
+                  {editingBlog.videoUrl && !removeVideo && (
+                    <div className="mb-2">
+                      <video src={editingBlog.videoUrl} className="w-64 rounded" controls />
+                      <button
+                        type="button"
+                        onClick={() => setRemoveVideo(true)}
+                        className={`mt-2 px-2 py-1 rounded ${
+                          darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                        } text-white transition duration-300`}
+                      >
+                        Remove Video
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    onChange={handleVideoChange}
+                    accept="video/*"
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                    }`}
+                  />
+                </div>
+              )}
+            </div>
+            <div>
+              <label htmlFor="tags" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Tags</label>
+              <div className="flex flex-wrap mb-2">
+                {tags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    className={`${
+                      darkMode ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'
+                    } px-2 py-1 rounded-full text-sm font-semibold mr-2 mb-2 flex items-center`}
+                  >
+                    {tag}
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveTag(tag)} 
+                      className="ml-1 focus:outline-none"
+                    >
+                      <FaTimes className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex">
                 <input
-                  type="file"
-                  onChange={handleVideoChange}
-                  accept="video/*"
-                  className={`w-full px-3 py-2 border rounded-md ${
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Add a tag"
+                  className={`flex-grow px-3 py-2 border rounded-l-md ${
                     darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
                   }`}
                 />
-              )}
+                <button
+                  type="button"
+                  onClick={handleAddTag}
+                  className={`px-4 py-2 rounded-r-md ${
+                    darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+                  } text-white`}
+                >
+                  Add Tag
+                </button>
+              </div>
             </div>
             <div className="flex justify-end space-x-4">
               <button
@@ -331,7 +480,20 @@ const EditBlog = () => {
             {blogs.map((blog) => (
               <div key={blog.id} className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{blog.title}</h2>
+                <p className={`mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Author: {blog.author}</p>
                 <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{blog.content.substring(0, 150)}...</p>
+                <div className="mb-4">
+                  {blog.tags && blog.tags.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className={`inline-block px-2 py-1 rounded-full text-sm font-semibold mr-2 mb-2 ${
+                        darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 <div className="flex justify-end space-x-4">
                   <button
                     onClick={() => handleEdit(blog)}

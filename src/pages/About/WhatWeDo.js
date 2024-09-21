@@ -34,47 +34,47 @@ const WhatWeDo = () => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-        <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'}`}>
+        <FaSpinner className="animate-spin text-6xl" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900 text-red-400' : 'bg-white text-red-600'}`}>
         {error}
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <div className="max-w-6xl mx-auto px-4">
-        <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'}`}>
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <h1 className="text-4xl font-bold mb-8 text-center">
           What We Do
         </h1>
         {content && (
           <div className="flex flex-col md:flex-row gap-8">
             <div className={`prose ${darkMode ? 'prose-invert' : ''} max-w-none md:w-2/3`}>
-              <h2 className={`text-2xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              <h2 className="text-2xl font-semibold mb-4">
                 Our Mission
               </h2>
-              <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <p className="mb-6">
                 {content.mission}
               </p>
               
-              <h2 className={`text-2xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              <h2 className="text-2xl font-semibold mb-4">
                 Our Approach
               </h2>
-              <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <p className="mb-6">
                 {content.approach}
               </p>
               
-              <h2 className={`text-2xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              <h2 className="text-2xl font-semibold mb-4">
                 Our Impact
               </h2>
-              <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <p className="mb-6">
                 {content.impact}
               </p>
             </div>

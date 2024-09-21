@@ -49,6 +49,11 @@ const Edit = () => {
             link="/edit/blogs"
           />
           <EditOption
+            title="Edit Feature Stories"
+            description="Update or remove feature stories from the homepage."
+            link="/edit/feature-story"
+          />
+          <EditOption
             title="Edit Team Members"
             description="Update or remove team members from the 'Who We Are' section."
             link="/edit/team-members"
@@ -78,6 +83,12 @@ const Edit = () => {
             title="Edit Contact Info"
             description="Update contact information for the Contact Us page."
             link="/edit/contact-info"
+          />
+          <EditOption
+            title="Edit Banner"
+            description="Update or remove the banner from the homepage."
+            link="/edit/banner"
+            disabled={!contentExists['Banner']}
           />
         </div>
       </div>

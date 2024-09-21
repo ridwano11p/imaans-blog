@@ -2,9 +2,19 @@ import React, { useContext, useEffect, useState } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { FaSpinner, FaFilePdf, FaDownload } from 'react-icons/fa';
+import { FaSpinner, FaFilePdf, FaDownload, FaTimes } from 'react-icons/fa';
 
 const PDFCard = ({ pdf, darkMode }) => {
+  const [showPDF, setShowPDF] = useState(false);
+
+  const handleViewPDF = () => {
+    setShowPDF(true);
+  };
+
+  const handleClosePDF = () => {
+    setShowPDF(false);
+  };
+
   return (
     <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
       <div className="p-4">
@@ -12,19 +22,40 @@ const PDFCard = ({ pdf, darkMode }) => {
           <FaFilePdf className={`text-4xl mr-4 ${darkMode ? 'text-red-400' : 'text-red-600'}`} />
           <h3 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{pdf.title}</h3>
         </div>
-        <p className={`text-sm mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{pdf.description}</p>
-        <a
-          href={pdf.fileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <div 
+          className={`text-sm mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'} whitespace-pre-line`}
+          dangerouslySetInnerHTML={{ __html: pdf.description }}
+        />
+        <button
+          onClick={handleViewPDF}
           className={`inline-flex items-center px-4 py-2 rounded ${
             darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
           } text-white transition duration-300`}
         >
           <FaDownload className="mr-2" />
-          Download PDF
-        </a>
+          View PDF
+        </button>
       </div>
+      {showPDF && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-4 rounded-lg w-full h-full max-w-4xl max-h-full flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">{pdf.title}</h2>
+              <button
+                onClick={handleClosePDF}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FaTimes size={24} />
+              </button>
+            </div>
+            <iframe
+              src={pdf.fileUrl}
+              title={pdf.title}
+              className="w-full h-full border-none"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -41,7 +72,8 @@ const PDFs = () => {
         const querySnapshot = await getDocs(collection(db, 'pdfs'));
         const pdfList = querySnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          description: doc.data().description.replace(/\n/g, '<br>')
         }));
         setPdfs(pdfList);
         setLoading(false);

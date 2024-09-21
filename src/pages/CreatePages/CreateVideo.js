@@ -5,10 +5,6 @@ import { db, storage } from '../../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { FaSpinner } from 'react-icons/fa';
-import imageCompression from 'browser-image-compression';
-
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2MB
 
 const CreateVideo = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -25,32 +21,14 @@ const CreateVideo = () => {
   const handleVideoFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > MAX_VIDEO_SIZE) {
-        setError(`Video file size should be less than ${MAX_VIDEO_SIZE / (1024 * 1024)}MB`);
-        return;
-      }
       setVideoFile(file);
     }
   };
 
-  const handleThumbnailChange = async (e) => {
+  const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > MAX_THUMBNAIL_SIZE) {
-        setError(`Thumbnail size should be less than ${MAX_THUMBNAIL_SIZE / (1024 * 1024)}MB`);
-        return;
-      }
-      
-      try {
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: MAX_THUMBNAIL_SIZE / (1024 * 1024),
-          maxWidthOrHeight: 1280
-        });
-        setThumbnail(compressedFile);
-      } catch (err) {
-        console.error("Error compressing thumbnail: ", err);
-        setError("Failed to process thumbnail. Please try again.");
-      }
+      setThumbnail(file);
     }
   };
 

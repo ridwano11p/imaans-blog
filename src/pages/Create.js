@@ -49,6 +49,12 @@ const Create = () => {
             link="/create/blog"
           />
           <CreateOption
+            title="Create Feature Story"
+            description="Create a new feature story for the homepage."
+            link="/create/feature-story"
+            disabled={contentExists['Feature Story']}
+          />
+          <CreateOption
             title="Add Team Member"
             description="Add a new team member to the 'Who We Are' section."
             link="/create/team-member"
@@ -83,6 +89,7 @@ const Create = () => {
             title="Create Banner"
             description="Create a new banner for the homepage."
             link="/create/banner"
+            disabled={contentExists['Banner']}
           />
         </div>
       </div>

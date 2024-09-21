@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
@@ -6,8 +7,53 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSpinner } from 'react-icons/fa';
 import VideoPlayer from '../components/VideoPlayer';
 
-const BlogPost = ({ post, darkMode }) => {
-  const [expanded, setExpanded] = useState(false);
+const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
+  if (imageUrl && videoUrl) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="w-full aspect-w-16 aspect-h-9">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="w-full h-full object-cover rounded-lg"
+          />
+        </div>
+        <div className="w-full aspect-w-16 aspect-h-9">
+          <VideoPlayer
+            videoUrl={videoUrl}
+            isYouTubeVideo={isYouTubeVideo}
+          />
+        </div>
+      </div>
+    );
+  } else if (videoUrl) {
+    return (
+      <div className="w-full aspect-w-16 aspect-h-9">
+        <VideoPlayer
+          videoUrl={videoUrl}
+          isYouTubeVideo={isYouTubeVideo}
+        />
+      </div>
+    );
+  } else if (imageUrl) {
+    return (
+      <div className="w-full aspect-w-16 aspect-h-9">
+        <img
+          src={imageUrl}
+          alt={title}
+          className="w-full h-full object-cover rounded-lg"
+        />
+      </div>
+    );
+  }
+  return null;
+};
+
+const BlogPost = ({ post, darkMode, onTagClick }) => {
+  const truncateContent = (content, maxLength = 150) => {
+    if (content.length <= maxLength) return content;
+    return content.substr(0, content.lastIndexOf(' ', maxLength)) + '...';
+  };
 
   return (
     <motion.div
@@ -21,26 +67,38 @@ const BlogPost = ({ post, darkMode }) => {
         <p className={`text-sm mb-2 text-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>By {post.author}</p>
         <p className={`text-sm mb-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{post.date}</p>
 
-        {post.imageUrl && (
-          <img src={post.imageUrl} alt="Blog post" className="w-full h-64 object-cover mb-4 rounded-lg" />
-        )}
-
-        {post.videoUrl && (
-          <div className="mb-4">
-            <VideoPlayer videoUrl={post.videoUrl} isYouTubeVideo={post.isYouTubeVideo} />
-          </div>
-        )}
+        <div className="mb-4">
+          <MediaContent
+            imageUrl={post.imageUrl}
+            videoUrl={post.videoUrl}
+            isYouTubeVideo={post.isYouTubeVideo}
+            title={post.title}
+          />
+        </div>
 
         <div className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          <p className={`${expanded ? '' : 'line-clamp-3'}`}>{post.content}</p>
+          <p>{truncateContent(post.content)}</p>
+        </div>
+        <div className="mb-4">
+          {post.tags && post.tags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => onTagClick(tag)}
+              className={`inline-block px-2 py-1 rounded-full text-sm font-semibold mr-2 mb-2 cursor-pointer ${
+                darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
         </div>
         <div className="flex justify-center">
-          <button
-            onClick={() => setExpanded(!expanded)}
+          <Link
+            to={`/article/${post.id}`}
             className={`px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition duration-300`}
           >
-            {expanded ? 'Read Less' : 'Read More'}
-          </button>
+            Read More
+          </Link>
         </div>
       </div>
     </motion.div>
@@ -54,6 +112,7 @@ const ImpactStories = () => {
   const [error, setError] = useState(null);
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
+  const navigate = useNavigate();
 
   const blogsPerPage = 5;
 
@@ -75,15 +134,29 @@ const ImpactStories = () => {
         ...doc.data()
       }));
 
-      setBlogs(prevBlogs => [...prevBlogs, ...fetchedBlogs]);
+      setBlogs(prevBlogs => {
+        const uniqueBlogs = [...prevBlogs];
+        fetchedBlogs.forEach(newBlog => {
+          if (!uniqueBlogs.some(blog => blog.id === newBlog.id)) {
+            uniqueBlogs.push(newBlog);
+          }
+        });
+        return uniqueBlogs;
+      });
+      
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === blogsPerPage);
+
       setLoading(false);
     } catch (err) {
       console.error("Error fetching blogs: ", err);
       setError("Failed to fetch blogs. Please try again later.");
       setLoading(false);
     }
+  };
+
+  const handleTagClick = (tag) => {
+    navigate(`/tag/${encodeURIComponent(tag)}`);
   };
 
   return (
@@ -95,7 +168,7 @@ const ImpactStories = () => {
 
         <AnimatePresence>
           {blogs.map((post) => (
-            <BlogPost key={post.id} post={post} darkMode={darkMode} />
+            <BlogPost key={post.id} post={post} darkMode={darkMode} onTagClick={handleTagClick} />
           ))}
         </AnimatePresence>
 

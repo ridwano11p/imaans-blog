@@ -91,7 +91,7 @@ const NavBar = () => {
 
   const navbarClasses = darkMode
     ? 'bg-gray-900'
-    : 'bg-gradient-to-r from-green-400 to-blue-500';
+    : 'bg-emerald-500';
 
   return (
     <nav className={`${navbarClasses} p-4`}>
