@@ -2,8 +2,9 @@ import React, { useContext, useEffect, useState } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { FaSpinner, FaExpand } from 'react-icons/fa';
+import { FaSpinner, FaExpand, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Img } from 'react-image';
 
 const PhotoCard = ({ photo, darkMode, onClick }) => {
   return (
@@ -13,7 +14,15 @@ const PhotoCard = ({ photo, darkMode, onClick }) => {
       }`}
       onClick={() => onClick(photo)}
     >
-      <img src={photo.url} alt={photo.title} className="w-full h-64 object-cover" />
+      <div className="aspect-w-16 aspect-h-9">
+        <Img
+          src={photo.photoUrl}
+          alt={photo.title}
+          className="w-full h-full object-cover"
+          loader={<div className="w-full h-full flex items-center justify-center bg-gray-200"><FaSpinner className="animate-spin text-4xl text-gray-400" /></div>}
+          unloader={<div className="w-full h-full flex items-center justify-center bg-gray-200">Error loading image</div>}
+        />
+      </div>
       <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 bg-black bg-opacity-50">
         <FaExpand className="text-white text-3xl" />
       </div>
@@ -32,20 +41,36 @@ const Modal = ({ photo, darkMode, onClose }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className={`max-w-3xl w-full p-4 rounded-lg ${
+        className={`max-w-4xl w-full max-h-[90vh] overflow-auto rounded-lg ${
           darkMode ? 'bg-gray-800' : 'bg-white'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <img src={photo.url} alt={photo.title} className="w-full h-auto rounded-lg mb-4" />
-        <h3 className={`text-2xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-          {photo.title}
-        </h3>
-        <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{photo.description}</p>
+        <div className="relative">
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition-all duration-200"
+          >
+            <FaTimes size={24} />
+          </button>
+          <Img
+            src={photo.photoUrl}
+            alt={photo.title}
+            className="w-full h-auto"
+            loader={<div className="w-full h-64 flex items-center justify-center"><FaSpinner className="animate-spin text-4xl text-gray-400" /></div>}
+            unloader={<div className="w-full h-64 flex items-center justify-center">Error loading image</div>}
+          />
+        </div>
+        <div className="p-4">
+          <h3 className={`text-2xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+            {photo.title}
+          </h3>
+          <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{photo.description}</p>
+        </div>
       </div>
     </motion.div>
   );
@@ -109,16 +134,22 @@ const Photos = () => {
           Photo Gallery
         </h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {photos.map((photo) => (
-            <PhotoCard
-              key={photo.id}
-              photo={photo}
-              darkMode={darkMode}
-              onClick={handlePhotoClick}
-            />
-          ))}
-        </div>
+        {photos.length === 0 ? (
+          <div className={`text-center mt-8 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            No photos created
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {photos.map((photo) => (
+              <PhotoCard
+                key={photo.id}
+                photo={photo}
+                darkMode={darkMode}
+                onClick={handlePhotoClick}
+              />
+            ))}
+          </div>
+        )}
 
         <AnimatePresence>
           {selectedPhoto && (

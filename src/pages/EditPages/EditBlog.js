@@ -19,8 +19,8 @@ const EditBlog = () => {
   const [youTubeUrl, setYouTubeUrl] = useState('');
   const [tags, setTags] = useState([]);
   const [newTag, setNewTag] = useState('');
-  const [removeImage, setRemoveImage] = useState(false);
-  const [removeVideo, setRemoveVideo] = useState(false);
+  const [removedImage, setRemovedImage] = useState(false);
+  const [removedVideo, setRemovedVideo] = useState(false);
 
   useEffect(() => {
     fetchBlogs();
@@ -51,15 +51,15 @@ const EditBlog = () => {
     setIsYouTubeVideo(blog.isYouTubeVideo || false);
     setYouTubeUrl(blog.videoUrl || '');
     setTags(blog.tags || []);
-    setRemoveImage(false);
-    setRemoveVideo(false);
+    setRemovedImage(false);
+    setRemovedVideo(false);
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setNewImage(file);
-      setRemoveImage(false);
+      setRemovedImage(false);
     }
   };
 
@@ -67,7 +67,7 @@ const EditBlog = () => {
     const file = e.target.files[0];
     if (file) {
       setNewVideo(file);
-      setRemoveVideo(false);
+      setRemovedVideo(false);
       setIsYouTubeVideo(false);
       setYouTubeUrl('');
     }
@@ -94,10 +94,16 @@ const EditBlog = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleRemoveYouTubeVideo = () => {
-    setYouTubeUrl('');
+  const handleRemoveImage = () => {
+    setRemovedImage(true);
+    setNewImage(null);
+  };
+
+  const handleRemoveVideo = () => {
+    setRemovedVideo(true);
+    setNewVideo(null);
     setIsYouTubeVideo(false);
-    setRemoveVideo(true);
+    setYouTubeUrl('');
   };
 
   const handleUpdate = async (e) => {
@@ -129,57 +135,48 @@ const EditBlog = () => {
         title: editingBlog.title.trim(),
         content: editingBlog.content.trim(),
         author: editingBlog.author.trim(),
-        isYouTubeVideo,
         tags,
         updatedAt: new Date()
       };
 
-      if (removeImage) {
-        if (editingBlog.imageUrl) {
-          const oldImageRef = ref(storage, editingBlog.imageUrl);
-          await deleteObject(oldImageRef);
-        }
+      // Handle image updates
+      if (removedImage && !newImage) {
         updateData.imageUrl = null;
       } else if (newImage) {
-        if (editingBlog.imageUrl) {
-          const oldImageRef = ref(storage, editingBlog.imageUrl);
-          await deleteObject(oldImageRef);
-        }
         const imageRef = ref(storage, `blog_images/${Date.now()}_${newImage.name}`);
         await uploadBytes(imageRef, newImage);
         const imageUrl = await getDownloadURL(imageRef);
         updateData.imageUrl = imageUrl;
       }
 
-      if (removeVideo) {
-        if (editingBlog.videoUrl && !editingBlog.isYouTubeVideo) {
-          const oldVideoRef = ref(storage, editingBlog.videoUrl);
-          await deleteObject(oldVideoRef);
-        }
+      // Handle video updates
+      if (removedVideo && !newVideo && !isYouTubeVideo) {
         updateData.videoUrl = null;
-        updateData.youtubeId = null;
         updateData.isYouTubeVideo = false;
       } else if (isYouTubeVideo && youTubeUrl) {
         updateData.videoUrl = youTubeUrl;
-        updateData.youtubeId = extractYoutubeId(youTubeUrl);
-        if (editingBlog.videoUrl && !editingBlog.isYouTubeVideo) {
-          const oldVideoRef = ref(storage, editingBlog.videoUrl);
-          await deleteObject(oldVideoRef);
-        }
+        updateData.isYouTubeVideo = true;
       } else if (newVideo) {
-        if (editingBlog.videoUrl) {
-          const oldVideoRef = ref(storage, editingBlog.videoUrl);
-          await deleteObject(oldVideoRef);
-        }
         const videoRef = ref(storage, `blog_videos/${Date.now()}_${newVideo.name}`);
         await uploadBytes(videoRef, newVideo);
         const videoUrl = await getDownloadURL(videoRef);
         updateData.videoUrl = videoUrl;
-        updateData.youtubeId = null;
         updateData.isYouTubeVideo = false;
       }
 
       await updateDoc(blogRef, updateData);
+
+      // Clean up old files if they were replaced or removed
+      if ((removedImage || newImage) && editingBlog.imageUrl) {
+        const oldImageRef = ref(storage, editingBlog.imageUrl);
+        await deleteObject(oldImageRef);
+      }
+
+      if ((removedVideo || newVideo || (isYouTubeVideo && youTubeUrl)) && editingBlog.videoUrl && !editingBlog.isYouTubeVideo) {
+        const oldVideoRef = ref(storage, editingBlog.videoUrl);
+        await deleteObject(oldVideoRef);
+      }
+
       setEditingBlog(null);
       fetchBlogs();
     } catch (err) {
@@ -311,12 +308,12 @@ const EditBlog = () => {
             </div>
             <div>
               <label htmlFor="image" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Image</label>
-              {editingBlog.imageUrl && !removeImage && (
+              {editingBlog.imageUrl && !removedImage && (
                 <div className="mb-2">
                   <img src={editingBlog.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
                   <button
                     type="button"
-                    onClick={() => setRemoveImage(true)}
+                    onClick={handleRemoveImage}
                     className={`mt-2 px-2 py-1 rounded ${
                       darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
                     } text-white transition duration-300`}
@@ -364,7 +361,7 @@ const EditBlog = () => {
                     />
                     <button
                       type="button"
-                      onClick={handleRemoveYouTubeVideo}
+                      onClick={handleRemoveVideo}
                       className={`px-4 py-2 rounded-r-md ${
                         darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
                       } text-white`}
@@ -388,12 +385,12 @@ const EditBlog = () => {
                 </div>
               ) : (
                 <div>
-                  {editingBlog.videoUrl && !removeVideo && (
+                  {editingBlog.videoUrl && !removedVideo && !isYouTubeVideo && (
                     <div className="mb-2">
                       <video src={editingBlog.videoUrl} className="w-64 rounded" controls />
                       <button
                         type="button"
-                        onClick={() => setRemoveVideo(true)}
+                        onClick={handleRemoveVideo}
                         className={`mt-2 px-2 py-1 rounded ${
                           darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
                         } text-white transition duration-300`}

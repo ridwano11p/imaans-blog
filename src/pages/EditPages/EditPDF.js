@@ -107,7 +107,8 @@ const EditPDF = () => {
         await uploadBytes(pdfFileRef, newPdfFile);
         const pdfUrl = await getDownloadURL(pdfFileRef);
         updateData.pdfUrl = pdfUrl;
-        updateData.fileName = fileName;
+        updateData.fileName = newPdfFile.name;
+        updateData.storageFileName = fileName;
       }
 
       await updateDoc(pdfRef, updateData);
@@ -242,7 +243,9 @@ const EditPDF = () => {
                   <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{pdf.title}</h2>
                 </div>
                 <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{pdf.description}</p>
-                <p className={`mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>File: {pdf.fileName}</p>
+                <p className={`mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  File: {pdf.fileName ? pdf.fileName.replace(/^\d+_/, '') : 'No file name available'}
+                </p>
                 <div className="flex justify-center space-x-4">
                   <button
                     onClick={() => handleEdit(pdf)}

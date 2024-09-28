@@ -4,43 +4,43 @@ import { ThemeContext } from '../context/ThemeContext';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { FaSpinner, FaCalendar, FaUser } from 'react-icons/fa';
+import VideoPlayer from '../components/VideoPlayer';
 
-const VideoPlayer = ({ videoUrl, isYoutubeVideo }) => {
-  if (isYoutubeVideo) {
+const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
+  const containerClasses = "w-full aspect-square md:aspect-video bg-black flex items-center justify-center overflow-hidden";
+  const mediaClasses = "w-full h-full object-contain";
+
+  if (imageUrl && videoUrl) {
     return (
-      <div className="w-full h-0 pb-[56.25%] relative rounded-lg overflow-hidden">
-        <iframe
-          src={videoUrl}
-          className="absolute top-0 left-0 w-full h-full"
-          frameBorder="0"
-          allow="encrypted-media"
-          allowFullScreen
-          title="Embedded Video"
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={containerClasses}>
+          <img src={imageUrl} alt={title} className={mediaClasses} />
+        </div>
+        <div className={containerClasses}>
+          <VideoPlayer
+            videoUrl={videoUrl}
+            isYouTubeVideo={isYouTubeVideo}
+          />
+        </div>
+      </div>
+    );
+  } else if (videoUrl) {
+    return (
+      <div className={containerClasses}>
+        <VideoPlayer
+          videoUrl={videoUrl}
+          isYouTubeVideo={isYouTubeVideo}
         />
       </div>
     );
-  } else {
+  } else if (imageUrl) {
     return (
-      <video
-        src={videoUrl}
-        className="w-full h-auto rounded-lg"
-        controls
-        preload="metadata"
-      />
+      <div className={containerClasses}>
+        <img src={imageUrl} alt={title} className={mediaClasses} />
+      </div>
     );
   }
-};
-
-const ImageDisplay = ({ imageUrl, title }) => {
-  return (
-    <div className="w-full h-0 pb-[56.25%] relative rounded-lg overflow-hidden bg-black">
-      <img
-        src={imageUrl}
-        alt={title}
-        className="absolute top-0 left-0 w-full h-full object-contain"
-      />
-    </div>
-  );
+  return null;
 };
 
 const formatContent = (content) => {
@@ -104,16 +104,14 @@ const ArticlePage = () => {
       {article && (
         <div className="max-w-4xl mx-auto px-4 py-12">
           <article className={`bg-white rounded-lg shadow-lg overflow-hidden ${darkMode ? 'dark:bg-gray-800 text-gray-100' : 'text-gray-800'}`}>
-            {(article.imageUrl || article.videoUrl) && (
-              <div className={`mb-6 ${article.imageUrl && article.videoUrl ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}`}>
-                {article.imageUrl && (
-                  <ImageDisplay imageUrl={article.imageUrl} title={article.title} />
-                )}
-                {article.videoUrl && (
-                  <VideoPlayer videoUrl={article.videoUrl} isYoutubeVideo={article.isYouTubeVideo} />
-                )}
-              </div>
-            )}
+            <div className="mb-6">
+              <MediaContent
+                imageUrl={article.imageUrl}
+                videoUrl={article.videoUrl}
+                isYouTubeVideo={article.isYouTubeVideo}
+                title={article.title}
+              />
+            </div>
             <div className="p-6 md:p-10">
               <h1 className="text-3xl md:text-4xl font-bold mb-4">{article.title}</h1>
               <div className="flex flex-wrap items-center text-sm mb-6">

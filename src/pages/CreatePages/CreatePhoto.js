@@ -1,7 +1,6 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
 import { db, storage } from '../../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -9,19 +8,12 @@ import { FaSpinner } from 'react-icons/fa';
 
 const CreatePhoto = () => {
   const { darkMode } = useContext(ThemeContext);
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -56,8 +48,7 @@ const CreatePhoto = () => {
 
     setLoading(true);
     try {
-      const fileName = `${Date.now()}_${photo.name}`;
-      const photoRef = ref(storage, `gallery_photos/${fileName}`);
+      const photoRef = ref(storage, `photos/${Date.now()}_${photo.name}`);
       await uploadBytes(photoRef, photo);
       const photoUrl = await getDownloadURL(photoRef);
 
@@ -65,7 +56,6 @@ const CreatePhoto = () => {
         title: title.trim(),
         description: description.trim(),
         photoUrl,
-        fileName,
         createdAt: new Date(),
         updatedAt: new Date()
       };

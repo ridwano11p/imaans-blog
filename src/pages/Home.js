@@ -2,24 +2,23 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { FaSpinner, FaSearch, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import Banner from '../components/Banner';
 import VideoPlayer from '../components/VideoPlayer';
 
 const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
+  const containerClasses = "w-full aspect-square md:aspect-video bg-black flex items-center justify-center overflow-hidden";
+  const mediaClasses = "w-full h-full object-contain";
+
   if (imageUrl && videoUrl) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="w-full bg-black flex items-center justify-center aspect-w-16 aspect-h-9">
-          <img 
-            src={imageUrl} 
-            alt={title} 
-            className="max-w-full max-h-full object-contain"
-          />
+        <div className={containerClasses}>
+          <img src={imageUrl} alt={title} className={mediaClasses} />
         </div>
-        <div className="w-full aspect-w-16 aspect-h-9">
+        <div className={containerClasses}>
           <VideoPlayer
             videoUrl={videoUrl}
             isYouTubeVideo={isYouTubeVideo}
@@ -29,7 +28,7 @@ const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
     );
   } else if (videoUrl) {
     return (
-      <div className="w-full aspect-w-16 aspect-h-9">
+      <div className={containerClasses}>
         <VideoPlayer
           videoUrl={videoUrl}
           isYouTubeVideo={isYouTubeVideo}
@@ -38,12 +37,8 @@ const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
     );
   } else if (imageUrl) {
     return (
-      <div className="w-full bg-black flex items-center justify-center aspect-w-16 aspect-h-9">
-        <img 
-          src={imageUrl} 
-          alt={title} 
-          className="max-w-full max-h-full object-contain"
-        />
+      <div className={containerClasses}>
+        <img src={imageUrl} alt={title} className={mediaClasses} />
       </div>
     );
   }
@@ -65,8 +60,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchError, setSearchError] = useState(null);
+  const [searchType, setSearchType] = useState('all');
   const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
 
@@ -105,27 +99,10 @@ const Home = () => {
     fetchData();
   }, []);
 
-  const handleSearch = async (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
-    setSearchError(null);
-    if (!searchTerm.trim()) return;
-
-    try {
-      const lowercaseSearchTerm = searchTerm.toLowerCase();
-      const q = query(
-        collection(db, 'blogs'),
-        where('title', '>=', lowercaseSearchTerm),
-        where('title', '<=', lowercaseSearchTerm + '\uf8ff')
-      );
-      const querySnapshot = await getDocs(q);
-      const results = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSearchResults(results);
-      if (results.length === 0) {
-        setSearchError("No results found. Please try a different search term.");
-      }
-    } catch (err) {
-      console.error("Error searching blogs: ", err);
-      setSearchError("An error occurred while searching. Please try again.");
+    if (searchTerm.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}&type=${searchType}`);
     }
   };
 
@@ -223,41 +200,36 @@ const Home = () => {
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <Banner />
       <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* Search Bar */}
+        {/* Search Bar with Options */}
         <div className="mb-16">
-          <form onSubmit={handleSearch} className="flex">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search blogs..."
-              className={`flex-grow p-2 rounded-l-md ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+              placeholder="Search"
+              className={`flex-grow p-2 rounded-t-md sm:rounded-l-md sm:rounded-t-none ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
             />
+            <select
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+              className={`p-2 ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}
+            >
+              <option value="all">All</option>
+              <option value="blogs">Blogs</option>
+              <option value="featureStories">Feature Stories</option>
+              <option value="photos">Images</option>
+              <option value="videos">Videos</option>
+              <option value="pdfs">PDFs</option>
+              <option value="team_members">Team Members</option>
+            </select>
             <button
               type="submit"
-              className={`p-2 rounded-r-md ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+              className={`p-2 rounded-b-md sm:rounded-r-md sm:rounded-b-none ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
             >
               <FaSearch />
             </button>
           </form>
-          {searchError && <p className={`mt-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{searchError}</p>}
-          {searchResults.length > 0 && (
-            <div className="mt-4">
-              <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Search Results:</h3>
-              <ul className="space-y-2">
-                {searchResults.map(result => (
-                  <li key={result.id}>
-                    <Link
-                      to={`/article/${result.id}`}
-                      className={`block p-2 rounded ${darkMode ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white text-gray-900 hover:bg-gray-100'}`}
-                    >
-                      {result.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
 
         {/* Feature Story */}

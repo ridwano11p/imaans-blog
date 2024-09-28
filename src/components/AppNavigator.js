@@ -11,6 +11,8 @@ import Edit from '../pages/Edit';
 import PrivateRoute from './PrivateRoute';
 import ArticlePage from '../pages/ArticlePage';
 import TagPage from '../pages/TagPage';
+import SearchResults from '../pages/SearchResults';
+import Search from '../pages/Search'; // Import the new Search component
 
 // About Us pages
 import WhoWeAre from '../pages/About/WhoWeAre';
@@ -63,6 +65,8 @@ const AppNavigator = () => {
         <Route path="/login" element={<><Login /><Footer /></>} />
         <Route path="/article/:id" element={<><ArticlePage /><Footer /></>} />
         <Route path="/tag/:tag" element={<><TagPage /><Footer /></>} />
+        <Route path="/search" element={<><SearchResults /><Footer /></>} />
+        <Route path="/search-page" element={<><Search /><Footer /></>} /> {/* Add the new Search route */}
         <Route path="/create" element={
           <PrivateRoute>
             <Create />

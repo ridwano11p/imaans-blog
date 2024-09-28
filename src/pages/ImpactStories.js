@@ -8,17 +8,16 @@ import { FaSpinner } from 'react-icons/fa';
 import VideoPlayer from '../components/VideoPlayer';
 
 const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
+  const containerClasses = "w-full aspect-square md:aspect-video bg-black flex items-center justify-center overflow-hidden";
+  const mediaClasses = "w-full h-full object-contain";
+
   if (imageUrl && videoUrl) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="w-full aspect-w-16 aspect-h-9">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="w-full h-full object-cover rounded-lg"
-          />
+        <div className={containerClasses}>
+          <img src={imageUrl} alt={title} className={mediaClasses} />
         </div>
-        <div className="w-full aspect-w-16 aspect-h-9">
+        <div className={containerClasses}>
           <VideoPlayer
             videoUrl={videoUrl}
             isYouTubeVideo={isYouTubeVideo}
@@ -28,7 +27,7 @@ const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
     );
   } else if (videoUrl) {
     return (
-      <div className="w-full aspect-w-16 aspect-h-9">
+      <div className={containerClasses}>
         <VideoPlayer
           videoUrl={videoUrl}
           isYouTubeVideo={isYouTubeVideo}
@@ -37,12 +36,8 @@ const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
     );
   } else if (imageUrl) {
     return (
-      <div className="w-full aspect-w-16 aspect-h-9">
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-full object-cover rounded-lg"
-        />
+      <div className={containerClasses}>
+        <img src={imageUrl} alt={title} className={mediaClasses} />
       </div>
     );
   }

@@ -38,6 +38,27 @@ const CreateVideo = () => {
     return match && match[1].length === 11;
   };
 
+  const generateThumbnail = (videoFile) => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(videoFile);
+      video.load();
+      video.onloadeddata = () => {
+        video.currentTime = 1; // Capture frame at 1 second
+      };
+      video.onseeked = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          resolve(new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.95);
+      };
+      video.onerror = reject;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -88,6 +109,12 @@ const CreateVideo = () => {
         if (thumbnail) {
           const thumbnailRef = ref(storage, `video_thumbnails/${thumbnail.name}`);
           await uploadBytes(thumbnailRef, thumbnail);
+          thumbnailUrl = await getDownloadURL(thumbnailRef);
+        } else {
+          // Generate thumbnail if not provided
+          const generatedThumbnail = await generateThumbnail(videoFile);
+          const thumbnailRef = ref(storage, `video_thumbnails/generated_${videoFile.name}.jpg`);
+          await uploadBytes(thumbnailRef, generatedThumbnail);
           thumbnailUrl = await getDownloadURL(thumbnailRef);
         }
       }
@@ -183,7 +210,7 @@ const CreateVideo = () => {
                 />
               </div>
               <div>
-                <label htmlFor="thumbnail" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Thumbnail Image</label>
+                <label htmlFor="thumbnail" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Thumbnail Image (Optional)</label>
                 <input
                   type="file"
                   id="thumbnail"

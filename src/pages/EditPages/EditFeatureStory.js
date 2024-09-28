@@ -1,51 +1,83 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ThemeContext } from '../../context/ThemeContext';
 import { db, storage } from '../../firebase';
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { ThemeContext } from '../../context/ThemeContext';
-import { useNavigate } from 'react-router-dom';
-import { FaTimes } from 'react-icons/fa';
+import { FaSpinner, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 
 const EditFeatureStory = () => {
-  const [stories, setStories] = useState([]);
-  const [selectedStory, setSelectedStory] = useState(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [author, setAuthor] = useState('');
-  const [image, setImage] = useState(null);
-  const [video, setVideo] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [tags, setTags] = useState([]);
-  const [newTag, setNewTag] = useState('');
-  const [removeImage, setRemoveImage] = useState(false);
-  const [removeVideo, setRemoveVideo] = useState(false);
-  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
-  const [youTubeUrl, setYouTubeUrl] = useState('');
   const { darkMode } = useContext(ThemeContext);
   const navigate = useNavigate();
+  const [stories, setStories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingStory, setEditingStory] = useState(null);
+  const [newImage, setNewImage] = useState(null);
+  const [newVideo, setNewVideo] = useState(null);
+  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
+  const [youTubeUrl, setYouTubeUrl] = useState('');
+  const [tags, setTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
+  const [removedImage, setRemovedImage] = useState(false);
+  const [removedVideo, setRemovedVideo] = useState(false);
 
   useEffect(() => {
-    const fetchStories = async () => {
+    fetchStories();
+  }, []);
+
+  const fetchStories = async () => {
+    setLoading(true);
+    try {
       const q = query(collection(db, 'featureStories'));
       const querySnapshot = await getDocs(q);
       const storiesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStories(storiesData);
-    };
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching stories: ", err);
+      setError("Failed to fetch stories. Please try again.");
+      setLoading(false);
+    }
+  };
 
-    fetchStories();
-  }, []);
-
-  const handleStorySelect = (story) => {
-    setSelectedStory(story);
-    setTitle(story.title);
-    setContent(story.content);
-    setAuthor(story.author || '');
-    setTags(story.tags || []);
+  const handleEdit = (story) => {
+    setEditingStory(story);
+    setNewImage(null);
+    setNewVideo(null);
     setIsYouTubeVideo(story.isYouTubeVideo || false);
     setYouTubeUrl(story.videoUrl || '');
-    setRemoveImage(false);
-    setRemoveVideo(false);
+    setTags(story.tags || []);
+    setRemovedImage(false);
+    setRemovedVideo(false);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setNewImage(file);
+      setRemovedImage(false);
+    }
+  };
+
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setNewVideo(file);
+      setRemovedVideo(false);
+      setIsYouTubeVideo(false);
+      setYouTubeUrl('');
+    }
+  };
+
+  const validateYouTubeUrl = (url) => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=)?([a-zA-Z0-9_-]{11})$/;
+    return youtubeRegex.test(url);
+  };
+
+  const extractYoutubeId = (url) => {
+    const match = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
   };
 
   const handleAddTag = () => {
@@ -59,41 +91,31 @@ const EditFeatureStory = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const validateYouTubeUrl = (url) => {
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=)?([a-zA-Z0-9_-]{11})$/;
-    return youtubeRegex.test(url);
+  const handleRemoveImage = () => {
+    setRemovedImage(true);
+    setNewImage(null);
   };
 
-  const extractYoutubeId = (url) => {
-    const match = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : null;
-  };
-
-  const handleRemoveYouTubeVideo = () => {
-    setYouTubeUrl('');
+  const handleRemoveVideo = () => {
+    setRemovedVideo(true);
+    setNewVideo(null);
     setIsYouTubeVideo(false);
-    setRemoveVideo(true);
+    setYouTubeUrl('');
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(null);
 
-    if (title.trim().length < 3) {
+    if (editingStory.title.trim().length < 3) {
       setError("Title must be at least 3 characters long.");
       setLoading(false);
       return;
     }
 
-    if (content.trim().length < 50) {
+    if (editingStory.content.trim().length < 50) {
       setError("Content must be at least 50 characters long.");
-      setLoading(false);
-      return;
-    }
-
-    if (author.trim().length < 2) {
-      setError("Author name must be at least 2 characters long.");
       setLoading(false);
       return;
     }
@@ -105,74 +127,65 @@ const EditFeatureStory = () => {
     }
 
     try {
-      const storyRef = doc(db, 'featureStories', selectedStory.id);
+      const storyRef = doc(db, 'featureStories', editingStory.id);
       let updateData = {
-        title: title.trim(),
-        content: content.trim(),
-        author: author.trim(),
+        title: editingStory.title.trim(),
+        content: editingStory.content.trim(),
         tags,
-        isYouTubeVideo,
         updatedAt: new Date()
       };
 
-      if (removeImage) {
-        if (selectedStory.imageUrl) {
-          const oldImageRef = ref(storage, selectedStory.imageUrl);
-          await deleteObject(oldImageRef);
-        }
+      // Handle image updates
+      if (removedImage && !newImage) {
         updateData.imageUrl = null;
-      } else if (image) {
-        if (selectedStory.imageUrl) {
-          const oldImageRef = ref(storage, selectedStory.imageUrl);
-          await deleteObject(oldImageRef);
-        }
-        const imageRef = ref(storage, `featureStories/${Date.now()}_${image.name}`);
-        await uploadBytes(imageRef, image);
+      } else if (newImage) {
+        const imageRef = ref(storage, `feature_story_images/${Date.now()}_${newImage.name}`);
+        await uploadBytes(imageRef, newImage);
         const imageUrl = await getDownloadURL(imageRef);
         updateData.imageUrl = imageUrl;
       }
 
-      if (removeVideo) {
-        if (selectedStory.videoUrl && !selectedStory.isYouTubeVideo) {
-          const oldVideoRef = ref(storage, selectedStory.videoUrl);
-          await deleteObject(oldVideoRef);
-        }
+      // Handle video updates
+      if (removedVideo && !newVideo && !isYouTubeVideo) {
         updateData.videoUrl = null;
-        updateData.youtubeId = null;
         updateData.isYouTubeVideo = false;
       } else if (isYouTubeVideo && youTubeUrl) {
         updateData.videoUrl = youTubeUrl;
-        updateData.youtubeId = extractYoutubeId(youTubeUrl);
-        if (selectedStory.videoUrl && !selectedStory.isYouTubeVideo) {
-          const oldVideoRef = ref(storage, selectedStory.videoUrl);
-          await deleteObject(oldVideoRef);
-        }
-      } else if (video) {
-        if (selectedStory.videoUrl) {
-          const oldVideoRef = ref(storage, selectedStory.videoUrl);
-          await deleteObject(oldVideoRef);
-        }
-        const videoRef = ref(storage, `featureStories/${Date.now()}_${video.name}`);
-        await uploadBytes(videoRef, video);
+        updateData.isYouTubeVideo = true;
+      } else if (newVideo) {
+        const videoRef = ref(storage, `feature_story_videos/${Date.now()}_${newVideo.name}`);
+        await uploadBytes(videoRef, newVideo);
         const videoUrl = await getDownloadURL(videoRef);
         updateData.videoUrl = videoUrl;
-        updateData.youtubeId = null;
         updateData.isYouTubeVideo = false;
       }
 
       await updateDoc(storyRef, updateData);
 
-      setLoading(false);
-      navigate('/');
+      // Clean up old files if they were replaced or removed
+      if ((removedImage || newImage) && editingStory.imageUrl) {
+        const oldImageRef = ref(storage, editingStory.imageUrl);
+        await deleteObject(oldImageRef);
+      }
+
+      if ((removedVideo || newVideo || (isYouTubeVideo && youTubeUrl)) && editingStory.videoUrl && !editingStory.isYouTubeVideo) {
+        const oldVideoRef = ref(storage, editingStory.videoUrl);
+        await deleteObject(oldVideoRef);
+      }
+
+      setEditingStory(null);
+      fetchStories();
     } catch (err) {
-      setError('Failed to update feature story. Please try again.');
+      console.error("Error updating story: ", err);
+      setError("Failed to update story. Please try again.");
+    } finally {
       setLoading(false);
-      console.error(err);
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this feature story?')) {
+  const handleDelete = async (selectedStory) => {
+    if (window.confirm("Are you sure you want to delete this feature story?")) {
+      setLoading(true);
       try {
         if (selectedStory.imageUrl) {
           const imageRef = ref(storage, selectedStory.imageUrl);
@@ -201,79 +214,72 @@ const EditFeatureStory = () => {
         });
         await batch.commit();
 
-        setStories(stories.filter(story => story.id !== selectedStory.id));
-        setSelectedStory(null);
-        setTitle('');
-        setContent('');
-        setAuthor('');
-        setTags([]);
+        fetchStories();
       } catch (err) {
-        setError('Failed to delete feature story. Please try again.');
-        console.error(err);
+        console.error("Error deleting story: ", err);
+        setError("Failed to delete story. Please try again.");
+      } finally {
+        setLoading(false);
       }
     }
   };
 
+  if (loading) {
+    return (
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+        <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</div>;
+  }
+
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <h1 className="text-3xl font-bold mb-6">Edit Feature Story</h1>
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-2">Select a story to edit:</h2>
-          <select
-            onChange={(e) => handleStorySelect(stories.find(s => s.id === e.target.value))}
-            className={`w-full p-2 rounded ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
-          >
-            <option value="">Select a story</option>
-            {stories.map(story => (
-              <option key={story.id} value={story.id}>{story.title}</option>
-            ))}
-          </select>
-        </div>
-        {selectedStory && (
-          <form onSubmit={handleUpdate} className="space-y-4">
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className="max-w-6xl mx-auto px-4">
+        <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          Edit Feature Stories
+        </h1>
+        {editingStory ? (
+          <form onSubmit={handleUpdate} className="space-y-6">
             <div>
-              <label htmlFor="title" className="block mb-2">Title</label>
+              <label htmlFor="title" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Title</label>
               <input
                 type="text"
                 id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                value={editingStory.title}
+                onChange={(e) => setEditingStory({...editingStory, title: e.target.value})}
                 required
-                className={`w-full p-2 rounded ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                minLength={3}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                }`}
               />
             </div>
             <div>
-              <label htmlFor="author" className="block mb-2">Author</label>
-              <input
-                type="text"
-                id="author"
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                required
-                className={`w-full p-2 rounded ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
-              />
-            </div>
-            <div>
-              <label htmlFor="content" className="block mb-2">Content</label>
+              <label htmlFor="content" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Content</label>
               <textarea
                 id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
+                value={editingStory.content}
+                onChange={(e) => setEditingStory({...editingStory, content: e.target.value})}
                 required
-                rows="6"
-                className={`w-full p-2 rounded ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                minLength={50}
+                rows="10"
+                className={`w-full px-3 py-2 border rounded-md ${
+                  darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                }`}
               ></textarea>
             </div>
             <div>
-              <label htmlFor="image" className="block mb-2">Image</label>
-              {selectedStory.imageUrl && !removeImage && (
+              <label htmlFor="image" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Image</label>
+              {editingStory.imageUrl && !removedImage && (
                 <div className="mb-2">
-                  <img src={selectedStory.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
+                  <img src={editingStory.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
                   <button
                     type="button"
-                    onClick={() => setRemoveImage(true)}
+                    onClick={handleRemoveImage}
                     className={`mt-2 px-2 py-1 rounded ${
                       darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
                     } text-white transition duration-300`}
@@ -285,13 +291,15 @@ const EditFeatureStory = () => {
               <input
                 type="file"
                 id="image"
-                onChange={(e) => setImage(e.target.files[0])}
+                onChange={handleImageChange}
                 accept="image/*"
-                className={`w-full p-2 rounded ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                }`}
               />
             </div>
             <div>
-              <label className={`flex items-center mb-2`}>
+              <label className={`flex items-center mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
                 <input
                   type="checkbox"
                   checked={isYouTubeVideo}
@@ -313,12 +321,14 @@ const EditFeatureStory = () => {
                       value={youTubeUrl}
                       onChange={(e) => setYouTubeUrl(e.target.value)}
                       placeholder="Enter YouTube URL"
-                      className={`flex-grow p-2 rounded-l ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                      className={`flex-grow px-3 py-2 border rounded-l-md ${
+                        darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                      }`}
                     />
                     <button
                       type="button"
-                      onClick={handleRemoveYouTubeVideo}
-                      className={`px-4 py-2 rounded-r ${
+                      onClick={handleRemoveVideo}
+                      className={`px-4 py-2 rounded-r-md ${
                         darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
                       } text-white`}
                     >
@@ -341,12 +351,12 @@ const EditFeatureStory = () => {
                 </div>
               ) : (
                 <div>
-                  {selectedStory.videoUrl && !removeVideo && (
+                  {editingStory.videoUrl && !removedVideo && !isYouTubeVideo && (
                     <div className="mb-2">
-                      <video src={selectedStory.videoUrl} className="w-64 rounded" controls />
+                      <video src={editingStory.videoUrl} className="w-64 rounded" controls />
                       <button
                         type="button"
-                        onClick={() => setRemoveVideo(true)}
+                        onClick={handleRemoveVideo}
                         className={`mt-2 px-2 py-1 rounded ${
                           darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
                         } text-white transition duration-300`}
@@ -357,19 +367,17 @@ const EditFeatureStory = () => {
                   )}
                   <input
                     type="file"
-                    onChange={(e) => {
-                      setVideo(e.target.files[0]);
-                      setIsYouTubeVideo(false);
-                      setYouTubeUrl('');
-                    }}
+                    onChange={handleVideoChange}
                     accept="video/*"
-                    className={`w-full p-2 rounded ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                    }`}
                   />
                 </div>
               )}
             </div>
             <div>
-              <label htmlFor="tags" className="block mb-2">Tags</label>
+              <label htmlFor="tags" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Tags</label>
               <div className="flex flex-wrap mb-2">
                 {tags.map((tag, index) => (
                   <span 
@@ -410,23 +418,65 @@ const EditFeatureStory = () => {
                 </button>
               </div>
             </div>
-            <div className="flex space-x-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className={`px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
-              >
-                {loading ? 'Updating...' : 'Update Feature Story'}
-              </button>
+            <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={handleDelete}
-                className={`px-4 py-2 rounded ${darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white`}
+                onClick={() => setEditingStory(null)}
+                className={`px-4 py-2 rounded-md ${
+                  darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'
+                } text-gray-800 transition duration-300`}
               >
-                Delete Feature Story
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={`px-4 py-2 rounded-md ${
+                  darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+                } text-white transition duration-300`}
+              >
+                Update Story
               </button>
             </div>
           </form>
+        ) : (
+          <div className="space-y-6">
+            {stories.map((story) => (
+              <div key={story.id} className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{story.title}</h2>
+                <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{story.content.substring(0, 150)}...</p>
+                <div className="mb-4">
+                  {story.tags && story.tags.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className={`inline-block px-2 py-1 rounded-full text-sm font-semibold mr-2 mb-2 ${
+                        darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    onClick={() => handleEdit(story)}
+                    className={`px-4 py-2 rounded-md ${
+                      darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'
+                    } text-white transition duration-300 flex items-center`}
+                  >
+                    <FaEdit className="mr-2" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(story)}
+                    className={`px-4 py-2 rounded-md ${
+                      darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                    } text-white transition duration-300 flex items-center`}
+                  >
+                    <FaTrash className="mr-2" /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

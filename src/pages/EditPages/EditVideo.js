@@ -4,7 +4,7 @@ import { ThemeContext } from '../../context/ThemeContext';
 import { db, storage } from '../../firebase';
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
-import { FaSpinner, FaEdit, FaTrash, FaPlay } from 'react-icons/fa';
+import { FaSpinner, FaEdit, FaTrash, FaPlay, FaYoutube, FaFile } from 'react-icons/fa';
 
 const EditVideo = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -16,6 +16,7 @@ const EditVideo = () => {
   const [newVideoFile, setNewVideoFile] = useState(null);
   const [newThumbnail, setNewThumbnail] = useState(null);
   const [isLocalVideo, setIsLocalVideo] = useState(true);
+  const [tempYoutubeUrl, setTempYoutubeUrl] = useState('');
 
   useEffect(() => {
     fetchVideos();
@@ -44,6 +45,7 @@ const EditVideo = () => {
     setNewVideoFile(null);
     setNewThumbnail(null);
     setIsLocalVideo(!video.isYouTube);
+    setTempYoutubeUrl(video.youtubeUrl || '');
   };
 
   const handleVideoFileChange = (e) => {
@@ -108,18 +110,10 @@ const EditVideo = () => {
       return;
     }
 
-    if (!isLocalVideo) {
-      if (!editingVideo.youtubeUrl) {
-        setError("Please provide a YouTube URL.");
-        setLoading(false);
-        return;
-      }
-
-      if (!validateYouTubeUrl(editingVideo.youtubeUrl)) {
-        setError("Please provide a valid YouTube URL.");
-        setLoading(false);
-        return;
-      }
+    if (!isLocalVideo && !validateYouTubeUrl(tempYoutubeUrl)) {
+      setError("Please provide a valid YouTube URL.");
+      setLoading(false);
+      return;
     }
 
     try {
@@ -166,6 +160,10 @@ const EditVideo = () => {
           const thumbnailUrl = await getDownloadURL(thumbnailRef);
           updateData.thumbnailUrl = thumbnailUrl;
         }
+
+        // Remove YouTube-related fields if switching to local video
+        updateData.youtubeUrl = null;
+        updateData.youtubeId = null;
       } else {
         // If changing from local to YouTube, delete local video and thumbnail
         if (editingVideo.videoUrl) {
@@ -177,10 +175,10 @@ const EditVideo = () => {
           await deleteObject(oldThumbnailRef);
         }
 
-        updateData.youtubeUrl = editingVideo.youtubeUrl;
-        updateData.youtubeId = extractYoutubeId(editingVideo.youtubeUrl);
-        delete updateData.videoUrl;
-        delete updateData.thumbnailUrl;
+        updateData.youtubeUrl = tempYoutubeUrl;
+        updateData.youtubeId = extractYoutubeId(tempYoutubeUrl);
+        updateData.videoUrl = null;
+        updateData.thumbnailUrl = null;
       }
 
       await updateDoc(videoRef, updateData);
@@ -235,6 +233,15 @@ const EditVideo = () => {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handleRemoveVideo = () => {
+    if (isLocalVideo) {
+      setNewVideoFile(null);
+      setNewThumbnail(null);
+    } else {
+      setTempYoutubeUrl('');
     }
   };
 
@@ -321,7 +328,7 @@ const EditVideo = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="thumbnail" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>New Thumbnail (Optional)</label>
+                  <label htmlFor="thumbnail" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>New Thumbnail</label>
                   <input
                     type="file"
                     id="thumbnail"
@@ -339,8 +346,8 @@ const EditVideo = () => {
                 <input
                   type="url"
                   id="youtubeUrl"
-                  value={editingVideo.youtubeUrl || ''}
-                  onChange={(e) => setEditingVideo({...editingVideo, youtubeUrl: e.target.value})}
+                  value={tempYoutubeUrl}
+                  onChange={(e) => setTempYoutubeUrl(e.target.value)}
                   placeholder="https://www.youtube.com/watch?v=..."
                   className={`w-full px-3 py-2 border rounded-md ${
                     darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
@@ -366,6 +373,17 @@ const EditVideo = () => {
               >
                 Update Video
               </button>
+              {((isLocalVideo && newVideoFile) || (!isLocalVideo && tempYoutubeUrl)) && (
+                <button
+                  type="button"
+                  onClick={handleRemoveVideo}
+                  className={`px-4 py-2 rounded-md ${
+                    darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                  } text-white transition duration-300 flex items-center`}
+                >
+                  <FaTrash className="mr-2" /> Remove New Video
+                </button>
+              )}
             </div>
           </form>
         ) : (
@@ -379,7 +397,7 @@ const EditVideo = () => {
                     className="w-full h-48 object-cover rounded-md mb-4" 
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <FaPlay className="text-white text-4xl" />
+                    {video.isYouTube ? <FaYoutube className="text-white text-4xl" /> : <FaPlay className="text-white text-4xl" />}
                   </div>
                 </div>
                 <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{video.title}</h2>

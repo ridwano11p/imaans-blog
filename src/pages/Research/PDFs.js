@@ -8,11 +8,7 @@ const PDFCard = ({ pdf, darkMode }) => {
   const [showPDF, setShowPDF] = useState(false);
 
   const handleViewPDF = () => {
-    setShowPDF(true);
-  };
-
-  const handleClosePDF = () => {
-    setShowPDF(false);
+    window.open(pdf.pdfUrl, '_blank');
   };
 
   return (
@@ -33,29 +29,9 @@ const PDFCard = ({ pdf, darkMode }) => {
           } text-white transition duration-300`}
         >
           <FaDownload className="mr-2" />
-          View PDF
+          Download PDF
         </button>
       </div>
-      {showPDF && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-4 rounded-lg w-full h-full max-w-4xl max-h-full flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">{pdf.title}</h2>
-              <button
-                onClick={handleClosePDF}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FaTimes size={24} />
-              </button>
-            </div>
-            <iframe
-              src={pdf.fileUrl}
-              title={pdf.title}
-              className="w-full h-full border-none"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

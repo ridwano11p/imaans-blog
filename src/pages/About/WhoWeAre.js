@@ -1,10 +1,13 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db } from '../../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { FaSpinner, FaLinkedin, FaFacebook, FaYoutube, FaTwitter } from 'react-icons/fa';
 
 const SocialMediaButton = ({ icon, link, darkMode }) => {
+  if (!link) return null;
+  
   return (
     <a
       href={link}
@@ -20,6 +23,13 @@ const SocialMediaButton = ({ icon, link, darkMode }) => {
 };
 
 const TeamMemberModal = ({ member, darkMode, onClose }) => {
+  const socialMediaLinks = [
+    { icon: <FaLinkedin />, link: member.linkedin },
+    { icon: <FaFacebook />, link: member.facebook },
+    { icon: <FaYoutube />, link: member.youtube },
+    { icon: <FaTwitter />, link: member.twitter },
+  ].filter(item => item.link);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className={`relative max-w-2xl w-full rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} p-6`}>
@@ -40,10 +50,15 @@ const TeamMemberModal = ({ member, darkMode, onClose }) => {
           </div>
         </div>
         <div className="flex justify-end mt-4 space-x-2">
-          <SocialMediaButton icon={<FaLinkedin />} link={member.linkedin} darkMode={darkMode} />
-          <SocialMediaButton icon={<FaFacebook />} link={member.facebook} darkMode={darkMode} />
-          <SocialMediaButton icon={<FaYoutube />} link={member.youtube} darkMode={darkMode} />
-          <SocialMediaButton icon={<FaTwitter />} link={member.twitter} darkMode={darkMode} />
+          {socialMediaLinks.length > 0 ? (
+            socialMediaLinks.map((item, index) => (
+              <SocialMediaButton key={index} icon={item.icon} link={item.link} darkMode={darkMode} />
+            ))
+          ) : (
+            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              This team member has no social media links.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -77,15 +92,42 @@ const WhoWeAre = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'team_members'));
-        const members = querySnapshot.docs.map(doc => ({
+        const searchParams = new URLSearchParams(location.search);
+        const searchTerm = searchParams.get('q');
+
+        let q;
+        if (searchTerm) {
+          q = query(
+            collection(db, 'team_members'),
+            where('name', '>=', searchTerm.toLowerCase()),
+            where('name', '<=', searchTerm.toLowerCase() + '\uf8ff')
+          );
+        } else {
+          q = collection(db, 'team_members');
+        }
+
+        const querySnapshot = await getDocs(q);
+        let members = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+
+        if (searchTerm) {
+          // Filter for partial matches
+          const normalizedSearchTerm = searchTerm.toLowerCase().replace(/\s+/g, ' ').trim();
+          members = members.filter(member => 
+            member.name.toLowerCase().replace(/\s+/g, ' ').trim().includes(normalizedSearchTerm)
+          );
+          if (members.length > 0) {
+            setSelectedMember(members[0]);
+          }
+        }
+
         setTeamMembers(members);
         setLoading(false);
       } catch (err) {
@@ -96,7 +138,7 @@ const WhoWeAre = () => {
     };
 
     fetchTeamMembers();
-  }, []);
+  }, [location]);
 
   const openModal = (member) => {
     setSelectedMember(member);
@@ -122,17 +164,24 @@ const WhoWeAre = () => {
     );
   }
 
+  const isSearchResult = new URLSearchParams(location.search).get('q') !== null;
+
   return (
     <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-          Who We Are
+          {isSearchResult ? 'Search Results' : 'Who We Are'}
         </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {teamMembers.map((member) => (
             <TeamMember key={member.id} member={member} darkMode={darkMode} onOpenModal={openModal} />
           ))}
         </div>
+        {isSearchResult && teamMembers.length === 0 && (
+          <p className={`text-center mt-8 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            No team members found matching your search.
+          </p>
+        )}
       </div>
       {selectedMember && (
         <TeamMemberModal member={selectedMember} darkMode={darkMode} onClose={closeModal} />

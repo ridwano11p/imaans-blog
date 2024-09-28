@@ -60,21 +60,21 @@ const WhatWeDo = () => {
               <h2 className="text-2xl font-semibold mb-4">
                 Our Mission
               </h2>
-              <p className="mb-6">
+              <p className="mb-6 whitespace-pre-wrap">
                 {content.mission}
               </p>
               
               <h2 className="text-2xl font-semibold mb-4">
                 Our Approach
               </h2>
-              <p className="mb-6">
+              <p className="mb-6 whitespace-pre-wrap">
                 {content.approach}
               </p>
               
               <h2 className="text-2xl font-semibold mb-4">
                 Our Impact
               </h2>
-              <p className="mb-6">
+              <p className="mb-6 whitespace-pre-wrap">
                 {content.impact}
               </p>
             </div>
