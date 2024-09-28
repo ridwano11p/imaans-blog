@@ -2,9 +2,9 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, startAfter, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, startAfter, endBefore, limitToLast } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSpinner } from 'react-icons/fa';
+import { FaSpinner, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import VideoPlayer from '../components/VideoPlayer';
 
 const MediaContent = ({ imageUrl, videoUrl, isYouTubeVideo, title }) => {
@@ -105,22 +105,26 @@ const ImpactStories = () => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastVisible, setLastVisible] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [firstDoc, setFirstDoc] = useState(null);
+  const [lastDoc, setLastDoc] = useState(null);
   const navigate = useNavigate();
 
-  const blogsPerPage = 5;
+  const blogsPerPage = 4;
 
   useEffect(() => {
     fetchBlogs();
-  }, []);
+  }, [currentPage]);
 
   const fetchBlogs = async () => {
     setLoading(true);
     try {
-      let q = query(collection(db, 'blogs'), orderBy('createdAt', 'desc'), limit(blogsPerPage));
-      if (lastVisible) {
-        q = query(q, startAfter(lastVisible));
+      let q;
+      if (currentPage === 1) {
+        q = query(collection(db, 'blogs'), orderBy('createdAt', 'desc'), limit(blogsPerPage));
+      } else if (currentPage > 1) {
+        q = query(collection(db, 'blogs'), orderBy('createdAt', 'desc'), startAfter(lastDoc), limit(blogsPerPage));
       }
 
       const querySnapshot = await getDocs(q);
@@ -129,18 +133,14 @@ const ImpactStories = () => {
         ...doc.data()
       }));
 
-      setBlogs(prevBlogs => {
-        const uniqueBlogs = [...prevBlogs];
-        fetchedBlogs.forEach(newBlog => {
-          if (!uniqueBlogs.some(blog => blog.id === newBlog.id)) {
-            uniqueBlogs.push(newBlog);
-          }
-        });
-        return uniqueBlogs;
-      });
-      
-      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
-      setHasMore(querySnapshot.docs.length === blogsPerPage);
+      setBlogs(fetchedBlogs);
+      setFirstDoc(querySnapshot.docs[0]);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+
+      // Calculate total pages
+      const totalBlogsQuery = await getDocs(collection(db, 'blogs'));
+      const totalBlogs = totalBlogsQuery.size;
+      setTotalPages(Math.ceil(totalBlogs / blogsPerPage));
 
       setLoading(false);
     } catch (err) {
@@ -150,8 +150,50 @@ const ImpactStories = () => {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const handleFirstPage = () => {
+    setCurrentPage(1);
+  };
+
+  const handleLastPage = () => {
+    setCurrentPage(totalPages);
+  };
+
   const handleTagClick = (tag) => {
     navigate(`/tag/${encodeURIComponent(tag)}`);
+  };
+
+  const renderPageNumbers = () => {
+    let pageNumbers = [];
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`mx-1 px-3 py-1 rounded ${
+            i === currentPage
+              ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+              : (darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300')
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    return pageNumbers;
   };
 
   return (
@@ -179,15 +221,26 @@ const ImpactStories = () => {
           </div>
         )}
 
-        {!loading && !error && hasMore && (
-          <div className="flex justify-center mt-8">
+        {!loading && !error && totalPages > 1 && (
+          <div className="flex justify-center items-center mt-8 space-x-2">
             <button
-              onClick={fetchBlogs}
-              className={`px-6 py-3 rounded-md ${
-                darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
-              } text-white transition duration-300`}
+              onClick={handleFirstPage}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded ${
+                darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              } ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              Load More
+              <FaArrowLeft />
+            </button>
+            {renderPageNumbers()}
+            <button
+              onClick={handleLastPage}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded ${
+                darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              } ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <FaArrowRight />
             </button>
           </div>
         )}
