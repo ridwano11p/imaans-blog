@@ -28,7 +28,7 @@ const Footer = () => {
   }, []);
 
   return (
-    <footer className={`${darkMode ? 'bg-gray-900 text-gray-300' : 'bg-emerald-500 text-white'} py-12`}>
+    <footer className={`${darkMode ? 'bg-gray-900 text-gray-300' : 'bg-teal-700 text-white'} py-12`}>
       <div className="container mx-auto px-4">
         <div className="flex flex-wrap justify-between">
           <div className="w-full md:w-1/2 mb-8 md:mb-0">
@@ -91,7 +91,7 @@ const Footer = () => {
             <Link 
               to="/edit/contact-info" 
               className={`inline-block px-4 py-2 rounded ${
-                darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white text-emerald-500 hover:bg-gray-100'
+                darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white text-teal-700 hover:bg-gray-100'
               } transition duration-300`}
             >
               Edit Contact Information
