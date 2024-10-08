@@ -97,14 +97,14 @@ const EditContactInfo = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-800'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-800'}`}>
         <FaSpinner className="animate-spin text-4xl" />
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-800'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-800'}`}>
       <div className="max-w-2xl mx-auto px-4">
         <h2 className="text-3xl font-bold mb-6 text-center">Edit Contact Information</h2>
         <form onSubmit={handleSubmit} className="space-y-6">

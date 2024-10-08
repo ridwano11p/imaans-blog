@@ -92,7 +92,7 @@ const CreatePDF = () => {
   };
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-4xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Upload New PDF

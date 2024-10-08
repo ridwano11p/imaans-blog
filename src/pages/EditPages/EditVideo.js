@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useReducer, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db, storage } from '../../firebase';
@@ -6,24 +6,67 @@ import { collection, query, getDocs, doc, updateDoc, deleteDoc, getDoc } from 'f
 import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
 import { FaSpinner, FaEdit, FaTrash, FaPlay, FaYoutube, FaFile } from 'react-icons/fa';
 
+const initialState = {
+  videos: [],
+  loading: true,
+  error: null,
+  editingVideo: null,
+  newVideoFile: null,
+  newThumbnail: null,
+  isLocalVideo: true,
+  tempYoutubeUrl: '',
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_VIDEOS':
+      return { ...state, videos: action.payload, loading: false };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    case 'SET_EDITING_VIDEO':
+      return {
+        ...state,
+        editingVideo: action.payload,
+        newVideoFile: null,
+        newThumbnail: null,
+        isLocalVideo: action.payload ? !action.payload.isYouTube : true,
+        tempYoutubeUrl: action.payload ? action.payload.youtubeUrl || '' : '',
+      };
+    case 'UPDATE_EDITING_VIDEO':
+      return { ...state, editingVideo: { ...state.editingVideo, ...action.payload } };
+    case 'SET_NEW_VIDEO_FILE':
+      return { ...state, newVideoFile: action.payload };
+    case 'SET_NEW_THUMBNAIL':
+      return { ...state, newThumbnail: action.payload };
+    case 'SET_IS_LOCAL_VIDEO':
+      return { ...state, isLocalVideo: action.payload };
+    case 'SET_TEMP_YOUTUBE_URL':
+      return { ...state, tempYoutubeUrl: action.payload };
+    case 'REMOVE_VIDEO':
+      return {
+        ...state,
+        newVideoFile: null,
+        newThumbnail: null,
+        tempYoutubeUrl: '',
+      };
+    default:
+      return state;
+  }
+}
+
 const EditVideo = () => {
   const { darkMode } = useContext(ThemeContext);
   const navigate = useNavigate();
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editingVideo, setEditingVideo] = useState(null);
-  const [newVideoFile, setNewVideoFile] = useState(null);
-  const [newThumbnail, setNewThumbnail] = useState(null);
-  const [isLocalVideo, setIsLocalVideo] = useState(true);
-  const [tempYoutubeUrl, setTempYoutubeUrl] = useState('');
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     fetchVideos();
   }, []);
 
   const fetchVideos = async () => {
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const q = query(collection(db, 'videos'));
       const querySnapshot = await getDocs(q);
@@ -31,34 +74,28 @@ const EditVideo = () => {
         id: doc.id,
         ...doc.data()
       }));
-      setVideos(fetchedVideos);
-      setLoading(false);
+      dispatch({ type: 'SET_VIDEOS', payload: fetchedVideos });
     } catch (err) {
       console.error("Error fetching videos: ", err);
-      setError("Failed to fetch videos. Please try again.");
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to fetch videos. Please try again." });
     }
   };
 
   const handleEdit = (video) => {
-    setEditingVideo(video);
-    setNewVideoFile(null);
-    setNewThumbnail(null);
-    setIsLocalVideo(!video.isYouTube);
-    setTempYoutubeUrl(video.youtubeUrl || '');
+    dispatch({ type: 'SET_EDITING_VIDEO', payload: video });
   };
 
   const handleVideoFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewVideoFile(file);
+      dispatch({ type: 'SET_NEW_VIDEO_FILE', payload: file });
     }
   };
 
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewThumbnail(file);
+      dispatch({ type: 'SET_NEW_THUMBNAIL', payload: file });
     }
   };
 
@@ -95,68 +132,65 @@ const EditVideo = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
 
-    if (editingVideo.title.trim().length < 3) {
-      setError("Title must be at least 3 characters long.");
-      setLoading(false);
+    if (state.editingVideo.title.trim().length < 3) {
+      dispatch({ type: 'SET_ERROR', payload: "Title must be at least 3 characters long." });
       return;
     }
 
-    if (editingVideo.description.trim().length < 10) {
-      setError("Description must be at least 10 characters long.");
-      setLoading(false);
+    if (state.editingVideo.description.trim().length < 10) {
+      dispatch({ type: 'SET_ERROR', payload: "Description must be at least 10 characters long." });
       return;
     }
 
-    if (!isLocalVideo && !validateYouTubeUrl(tempYoutubeUrl)) {
-      setError("Please provide a valid YouTube URL.");
-      setLoading(false);
+    if (!state.isLocalVideo && !validateYouTubeUrl(state.tempYoutubeUrl)) {
+      dispatch({ type: 'SET_ERROR', payload: "Please provide a valid YouTube URL." });
       return;
     }
 
     try {
-      const videoRef = doc(db, 'videos', editingVideo.id);
+      const videoRef = doc(db, 'videos', state.editingVideo.id);
       let updateData = {
-        title: editingVideo.title.trim(),
-        description: editingVideo.description.trim(),
-        isYouTube: !isLocalVideo,
+        title: state.editingVideo.title.trim(),
+        description: state.editingVideo.description.trim(),
+        isYouTube: !state.isLocalVideo,
         updatedAt: new Date()
       };
 
-      if (isLocalVideo) {
-        if (newVideoFile) {
+      if (state.isLocalVideo) {
+        if (state.newVideoFile) {
           // Delete old video if it exists
-          if (editingVideo.videoUrl && !editingVideo.isYouTube) {
-            const oldVideoRef = ref(storage, editingVideo.videoUrl);
+          if (state.editingVideo.videoUrl && !state.editingVideo.isYouTube) {
+            const oldVideoRef = ref(storage, state.editingVideo.videoUrl);
             await deleteObject(oldVideoRef);
           }
 
-          const videoFileRef = ref(storage, `videos/${newVideoFile.name}`);
-          await uploadBytes(videoFileRef, newVideoFile);
+          const videoFileRef = ref(storage, `videos/${state.newVideoFile.name}`);
+          await uploadBytes(videoFileRef, state.newVideoFile);
           const videoUrl = await getDownloadURL(videoFileRef);
           updateData.videoUrl = videoUrl;
 
           // Generate thumbnail if not provided
-          if (!newThumbnail) {
-            const generatedThumbnail = await generateThumbnail(newVideoFile);
-            const thumbnailRef = ref(storage, `video_thumbnails/generated_${newVideoFile.name}.jpg`);
+          if (!state.newThumbnail) {
+            const generatedThumbnail = await generateThumbnail(state.newVideoFile);
+            const thumbnailRef = ref(storage, `video_thumbnails/generated_${state.newVideoFile.name}.jpg`);
             await uploadBytes(thumbnailRef, generatedThumbnail);
             const thumbnailUrl = await getDownloadURL(thumbnailRef);
             updateData.thumbnailUrl = thumbnailUrl;
           }
         }
 
-        if (newThumbnail) {
+        if (state.newThumbnail) {
           // Delete old thumbnail if it exists
-          if (editingVideo.thumbnailUrl) {
-            const oldThumbnailRef = ref(storage, editingVideo.thumbnailUrl);
+          if (state.editingVideo.thumbnailUrl) {
+            const oldThumbnailRef = ref(storage, state.editingVideo.thumbnailUrl);
             await deleteObject(oldThumbnailRef);
           }
 
-          const thumbnailRef = ref(storage, `video_thumbnails/${newThumbnail.name}`);
-          await uploadBytes(thumbnailRef, newThumbnail);
+          const thumbnailRef = ref(storage, `video_thumbnails/${state.newThumbnail.name}`);
+          await uploadBytes(thumbnailRef, state.newThumbnail);
           const thumbnailUrl = await getDownloadURL(thumbnailRef);
           updateData.thumbnailUrl = thumbnailUrl;
         }
@@ -166,37 +200,35 @@ const EditVideo = () => {
         updateData.youtubeId = null;
       } else {
         // If changing from local to YouTube, delete local video and thumbnail
-        if (editingVideo.videoUrl) {
-          const oldVideoRef = ref(storage, editingVideo.videoUrl);
+        if (state.editingVideo.videoUrl) {
+          const oldVideoRef = ref(storage, state.editingVideo.videoUrl);
           await deleteObject(oldVideoRef);
         }
-        if (editingVideo.thumbnailUrl) {
-          const oldThumbnailRef = ref(storage, editingVideo.thumbnailUrl);
+        if (state.editingVideo.thumbnailUrl) {
+          const oldThumbnailRef = ref(storage, state.editingVideo.thumbnailUrl);
           await deleteObject(oldThumbnailRef);
         }
 
-        updateData.youtubeUrl = tempYoutubeUrl;
-        updateData.youtubeId = extractYoutubeId(tempYoutubeUrl);
+        updateData.youtubeUrl = state.tempYoutubeUrl;
+        updateData.youtubeId = extractYoutubeId(state.tempYoutubeUrl);
         updateData.videoUrl = null;
         updateData.thumbnailUrl = null;
       }
 
       await updateDoc(videoRef, updateData);
-      setEditingVideo(null);
+      dispatch({ type: 'SET_EDITING_VIDEO', payload: null });
       fetchVideos();
     } catch (err) {
       console.error("Error updating video: ", err);
-      setError("Failed to update video. Please try again.");
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to update video. Please try again." });
     }
   };
 
   const handleDelete = async (videoId) => {
     if (window.confirm("Are you sure you want to delete this video?")) {
-      setLoading(true);
+      dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const videoToDelete = videos.find(v => v.id === videoId);
+        const videoToDelete = state.videos.find(v => v.id === videoId);
         
         // Delete video file if it's a local video
         if (videoToDelete.videoUrl && !videoToDelete.isYouTube) {
@@ -229,49 +261,42 @@ const EditVideo = () => {
         fetchVideos();
       } catch (err) {
         console.error("Error deleting video: ", err);
-        setError("Failed to delete video. Please try again.");
-      } finally {
-        setLoading(false);
+        dispatch({ type: 'SET_ERROR', payload: "Failed to delete video. Please try again." });
       }
     }
   };
 
   const handleRemoveVideo = () => {
-    if (isLocalVideo) {
-      setNewVideoFile(null);
-      setNewThumbnail(null);
-    } else {
-      setTempYoutubeUrl('');
-    }
+    dispatch({ type: 'REMOVE_VIDEO' });
   };
 
-  if (loading) {
+  if (state.loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
   }
 
-  if (error) {
-    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</div>;
+  if (state.error) {
+    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{state.error}</div>;
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Edit Videos
         </h1>
-        {editingVideo ? (
+        {state.editingVideo ? (
           <form onSubmit={handleUpdate} className="space-y-6">
             <div>
               <label htmlFor="title" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Title</label>
               <input
                 type="text"
                 id="title"
-                value={editingVideo.title}
-                onChange={(e) => setEditingVideo({...editingVideo, title: e.target.value})}
+                value={state.editingVideo.title}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_VIDEO', payload: { title: e.target.value } })}
                 required
                 minLength={3}
                 className={`w-full px-3 py-2 border rounded-md ${
@@ -283,8 +308,8 @@ const EditVideo = () => {
               <label htmlFor="description" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Description</label>
               <textarea
                 id="description"
-                value={editingVideo.description}
-                onChange={(e) => setEditingVideo({...editingVideo, description: e.target.value})}
+                value={state.editingVideo.description}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_VIDEO', payload: { description: e.target.value } })}
                 required
                 minLength={10}
                 rows="5"
@@ -297,8 +322,8 @@ const EditVideo = () => {
               <label className={`flex items-center ${darkMode ? 'text-white' : 'text-gray-700'}`}>
                 <input
                   type="checkbox"
-                  checked={isLocalVideo}
-                  onChange={() => setIsLocalVideo(true)}
+                  checked={state.isLocalVideo}
+                  onChange={() => dispatch({ type: 'SET_IS_LOCAL_VIDEO', payload: true })}
                   className="mr-2"
                 />
                 Local Video
@@ -306,14 +331,14 @@ const EditVideo = () => {
               <label className={`flex items-center ${darkMode ? 'text-white' : 'text-gray-700'}`}>
                 <input
                   type="checkbox"
-                  checked={!isLocalVideo}
-                  onChange={() => setIsLocalVideo(false)}
+                  checked={!state.isLocalVideo}
+                  onChange={() => dispatch({ type: 'SET_IS_LOCAL_VIDEO', payload: false })}
                   className="mr-2"
                 />
                 YouTube Video
               </label>
             </div>
-            {isLocalVideo ? (
+            {state.isLocalVideo ? (
               <>
                 <div>
                   <label htmlFor="video" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>New Video File</label>
@@ -346,8 +371,8 @@ const EditVideo = () => {
                 <input
                   type="url"
                   id="youtubeUrl"
-                  value={tempYoutubeUrl}
-                  onChange={(e) => setTempYoutubeUrl(e.target.value)}
+                  value={state.tempYoutubeUrl}
+                  onChange={(e) => dispatch({ type: 'SET_TEMP_YOUTUBE_URL', payload: e.target.value })}
                   placeholder="https://www.youtube.com/watch?v=..."
                   className={`w-full px-3 py-2 border rounded-md ${
                     darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
@@ -358,7 +383,7 @@ const EditVideo = () => {
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={() => setEditingVideo(null)}
+                onClick={() => dispatch({ type: 'SET_EDITING_VIDEO', payload: null })}
                 className={`px-4 py-2 rounded-md ${
                   darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'
                 } text-gray-800 transition duration-300`}
@@ -373,7 +398,7 @@ const EditVideo = () => {
               >
                 Update Video
               </button>
-              {((isLocalVideo && newVideoFile) || (!isLocalVideo && tempYoutubeUrl)) && (
+              {((state.isLocalVideo && state.newVideoFile) || (!state.isLocalVideo && state.tempYoutubeUrl)) && (
                 <button
                   type="button"
                   onClick={handleRemoveVideo}
@@ -388,7 +413,7 @@ const EditVideo = () => {
           </form>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {videos.map((video) => (
+            {state.videos.map((video) => (
               <div key={video.id} className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <div className="relative">
                   <img 

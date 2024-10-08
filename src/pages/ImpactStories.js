@@ -55,7 +55,7 @@ const BlogPost = ({ post, darkMode, onTagClick }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'} max-w-4xl mx-auto`}
+      className={`mb-12 rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'} max-w-4xl mx-auto`}
     >
       <div className="p-6">
         <h2 className={`text-2xl font-bold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>{post.title}</h2>
@@ -197,7 +197,7 @@ const ImpactStories = () => {
   };
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-5xl font-bold mb-12 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Impact Stories

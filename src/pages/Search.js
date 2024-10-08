@@ -17,7 +17,7 @@ const Search = () => {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className={`text-3xl font-semibold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Search Our Content

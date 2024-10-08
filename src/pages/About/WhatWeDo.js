@@ -34,7 +34,7 @@ const WhatWeDo = () => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-800'}`}>
         <FaSpinner className="animate-spin text-6xl" />
       </div>
     );
@@ -42,14 +42,14 @@ const WhatWeDo = () => {
 
   if (error) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900 text-red-400' : 'bg-white text-red-600'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900 text-red-400' : 'bg-[#90d2dc] text-red-600'}`}>
         {error}
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-800'}`}>
       <div className="max-w-6xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold mb-8 text-center">
           What We Do

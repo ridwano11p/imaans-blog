@@ -93,7 +93,7 @@ const EditBanner = () => {
   };
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-900'}`}>
       <div className="max-w-2xl mx-auto px-4">
         <h1 className="text-3xl font-semibold mb-6">Edit Banner</h1>
         <form onSubmit={handleSubmit}>

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { ThemeContext } from '../context/ThemeContext';
 
 const MediaContent = ({ mediaUrl, mediaType, isYouTubeVideo, title }) => {
   if (mediaType === 'video') {
@@ -51,6 +52,7 @@ const formatContent = (content) => {
 
 const Banner = () => {
   const [bannerContent, setBannerContent] = useState(null);
+  const { darkMode } = useContext(ThemeContext);
 
   useEffect(() => {
     const fetchBannerContent = async () => {
@@ -71,11 +73,11 @@ const Banner = () => {
   if (!bannerContent) return null;
 
   return (
-    <div className="w-full bg-emerald-500">
+    <div className={`w-full ${darkMode ? 'bg-gray-900' : 'bg-gray-200'}`}>
       <div className="max-w-7xl mx-auto px-4 py-12 flex flex-col md:flex-row items-center justify-between">
         <div className="md:w-1/2 mb-8 md:mb-0 md:pr-8">
-          <h1 className="text-4xl font-bold text-white mb-4">{bannerContent.title}</h1>
-          <div className="text-xl text-white">
+          <h1 className={`text-4xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-black'}`}>{bannerContent.title}</h1>
+          <div className={`text-xl ${darkMode ? 'text-gray-200' : 'text-black'}`}>
             {formatContent(bannerContent.description)}
           </div>
         </div>

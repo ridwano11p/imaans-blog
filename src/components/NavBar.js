@@ -70,6 +70,19 @@ const NavBar = () => {
     dispatch({ type: 'CLOSE_ALL' });
   }, [location.pathname]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.submenu-container')) {
+        dispatch({ type: 'CLOSE_ALL' });
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -93,11 +106,11 @@ const NavBar = () => {
   ];
 
   const docsItems = [
-    { name: 'Videos', link: '/documentaries/videos' },
+    { name: 'Documentary', link: '/documentaries/documentary' },
   ];
 
   const researchItems = [
-    { name: 'PDFs', link: '/research/pdfs' },
+    { name: 'Bookshelf', link: '/research/bookshelf' },
   ];
 
   const galleryItems = [
@@ -147,39 +160,47 @@ const NavBar = () => {
           
           {/* Bottom Row */}
           <div className="flex items-center justify-center space-x-6 py-2">
-            <SubMenu
-              title="About Us"
-              items={aboutUsItems}
-              isOpen={state.openMenu === 'aboutUs'}
-              toggleMenu={() => toggleMenu('aboutUs')}
-              closeMenu={closeMenu}
-              isMobile={false}
-            />
+            <div className="submenu-container">
+              <SubMenu
+                title="About Us"
+                items={aboutUsItems}
+                isOpen={state.openMenu === 'aboutUs'}
+                toggleMenu={() => toggleMenu('aboutUs')}
+                closeMenu={closeMenu}
+                isMobile={false}
+              />
+            </div>
             <Link to="/impact-stories" className="text-white hover:text-gray-200">Impact Stories</Link>
-            <SubMenu
-              title="Documentaries"
-              items={docsItems}
-              isOpen={state.openMenu === 'docs'}
-              toggleMenu={() => toggleMenu('docs')}
-              closeMenu={closeMenu}
-              isMobile={false}
-            />
-            <SubMenu
-              title="Research and Reports"
-              items={researchItems}
-              isOpen={state.openMenu === 'research'}
-              toggleMenu={() => toggleMenu('research')}
-              closeMenu={closeMenu}
-              isMobile={false}
-            />
-            <SubMenu
-              title="Gallery"
-              items={galleryItems}
-              isOpen={state.openMenu === 'gallery'}
-              toggleMenu={() => toggleMenu('gallery')}
-              closeMenu={closeMenu}
-              isMobile={false}
-            />
+            <div className="submenu-container">
+              <SubMenu
+                title="Documentary"
+                items={docsItems}
+                isOpen={state.openMenu === 'docs'}
+                toggleMenu={() => toggleMenu('docs')}
+                closeMenu={closeMenu}
+                isMobile={false}
+              />
+            </div>
+            <div className="submenu-container">
+              <SubMenu
+                title="Research and Reports"
+                items={researchItems}
+                isOpen={state.openMenu === 'research'}
+                toggleMenu={() => toggleMenu('research')}
+                closeMenu={closeMenu}
+                isMobile={false}
+              />
+            </div>
+            <div className="submenu-container">
+              <SubMenu
+                title="Gallery"
+                items={galleryItems}
+                isOpen={state.openMenu === 'gallery'}
+                toggleMenu={() => toggleMenu('gallery')}
+                closeMenu={closeMenu}
+                isMobile={false}
+              />
+            </div>
             <Link to="/contact" className="text-white hover:text-gray-200">Contact Us</Link>
           </div>
         </div>
@@ -215,7 +236,7 @@ const NavBar = () => {
               />
               <Link to="/impact-stories" className="text-white hover:text-gray-200" onClick={closeMenu}>Impact Stories</Link>
               <SubMenu
-                title="Documentaries"
+                title="Documentary"
                 items={docsItems}
                 isOpen={state.openMenu === 'docs'}
                 toggleMenu={() => toggleMenu('docs')}

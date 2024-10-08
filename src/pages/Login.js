@@ -39,7 +39,7 @@ const Login = () => {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'}`}>
       <div className={`max-w-md w-full space-y-8 ${darkMode ? 'bg-gray-700' : 'bg-white'} p-10 rounded-xl shadow-md`}>
         <div>
           <h2 className={`mt-6 text-center text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-gray-900'}`}>

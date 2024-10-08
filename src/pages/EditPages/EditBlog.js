@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useReducer, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db, storage } from '../../firebase';
@@ -6,28 +6,91 @@ import { collection, query, getDocs, doc, updateDoc, deleteDoc, writeBatch } fro
 import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
 import { FaSpinner, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 
+const initialState = {
+  blogs: [],
+  loading: true,
+  error: null,
+  editingBlog: null,
+  newImage: null,
+  newVideo: null,
+  isYouTubeVideo: false,
+  youTubeUrl: '',
+  tags: [],
+  newTag: '',
+  removedImage: false,
+  removedVideo: false,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_BLOGS':
+      return { ...state, blogs: action.payload, loading: false };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    case 'SET_EDITING_BLOG':
+      return {
+        ...state,
+        editingBlog: action.payload,
+        newImage: null,
+        newVideo: null,
+        isYouTubeVideo: action.payload ? action.payload.isYouTubeVideo || false : false,
+        youTubeUrl: action.payload ? action.payload.videoUrl || '' : '',
+        tags: action.payload ? action.payload.tags || [] : [],
+        removedImage: false,
+        removedVideo: false,
+      };
+    case 'UPDATE_EDITING_BLOG':
+      return { ...state, editingBlog: { ...state.editingBlog, ...action.payload } };
+    case 'SET_NEW_IMAGE':
+      return { ...state, newImage: action.payload, removedImage: false };
+    case 'SET_NEW_VIDEO':
+      return {
+        ...state,
+        newVideo: action.payload,
+        removedVideo: false,
+        isYouTubeVideo: false,
+        youTubeUrl: '',
+      };
+    case 'SET_IS_YOUTUBE_VIDEO':
+      return { ...state, isYouTubeVideo: action.payload };
+    case 'SET_YOUTUBE_URL':
+      return { ...state, youTubeUrl: action.payload };
+    case 'SET_TAGS':
+      return { ...state, tags: action.payload };
+    case 'SET_NEW_TAG':
+      return { ...state, newTag: action.payload };
+    case 'ADD_TAG':
+      return { ...state, tags: [...state.tags, action.payload], newTag: '' };
+    case 'REMOVE_TAG':
+      return { ...state, tags: state.tags.filter(tag => tag !== action.payload) };
+    case 'SET_REMOVED_IMAGE':
+      return { ...state, removedImage: action.payload, newImage: null };
+    case 'SET_REMOVED_VIDEO':
+      return {
+        ...state,
+        removedVideo: action.payload,
+        newVideo: null,
+        isYouTubeVideo: false,
+        youTubeUrl: '',
+      };
+    default:
+      return state;
+  }
+}
+
 const EditBlog = () => {
   const { darkMode } = useContext(ThemeContext);
   const navigate = useNavigate();
-  const [blogs, setBlogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editingBlog, setEditingBlog] = useState(null);
-  const [newImage, setNewImage] = useState(null);
-  const [newVideo, setNewVideo] = useState(null);
-  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
-  const [youTubeUrl, setYouTubeUrl] = useState('');
-  const [tags, setTags] = useState([]);
-  const [newTag, setNewTag] = useState('');
-  const [removedImage, setRemovedImage] = useState(false);
-  const [removedVideo, setRemovedVideo] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     fetchBlogs();
   }, []);
 
   const fetchBlogs = async () => {
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const q = query(collection(db, 'blogs'));
       const querySnapshot = await getDocs(q);
@@ -35,41 +98,28 @@ const EditBlog = () => {
         id: doc.id,
         ...doc.data()
       }));
-      setBlogs(fetchedBlogs);
-      setLoading(false);
+      dispatch({ type: 'SET_BLOGS', payload: fetchedBlogs });
     } catch (err) {
       console.error("Error fetching blogs: ", err);
-      setError("Failed to fetch blogs. Please try again.");
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to fetch blogs. Please try again." });
     }
   };
 
   const handleEdit = (blog) => {
-    setEditingBlog(blog);
-    setNewImage(null);
-    setNewVideo(null);
-    setIsYouTubeVideo(blog.isYouTubeVideo || false);
-    setYouTubeUrl(blog.videoUrl || '');
-    setTags(blog.tags || []);
-    setRemovedImage(false);
-    setRemovedVideo(false);
+    dispatch({ type: 'SET_EDITING_BLOG', payload: blog });
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewImage(file);
-      setRemovedImage(false);
+      dispatch({ type: 'SET_NEW_IMAGE', payload: file });
     }
   };
 
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewVideo(file);
-      setRemovedVideo(false);
-      setIsYouTubeVideo(false);
-      setYouTubeUrl('');
+      dispatch({ type: 'SET_NEW_VIDEO', payload: file });
     }
   };
 
@@ -84,81 +134,73 @@ const EditBlog = () => {
   };
 
   const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag('');
+    if (state.newTag.trim() && !state.tags.includes(state.newTag.trim())) {
+      dispatch({ type: 'ADD_TAG', payload: state.newTag.trim() });
     }
   };
 
   const handleRemoveTag = (tagToRemove) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+    dispatch({ type: 'REMOVE_TAG', payload: tagToRemove });
   };
 
   const handleRemoveImage = () => {
-    setRemovedImage(true);
-    setNewImage(null);
+    dispatch({ type: 'SET_REMOVED_IMAGE', payload: true });
   };
 
   const handleRemoveVideo = () => {
-    setRemovedVideo(true);
-    setNewVideo(null);
-    setIsYouTubeVideo(false);
-    setYouTubeUrl('');
+    dispatch({ type: 'SET_REMOVED_VIDEO', payload: true });
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
 
-    if (editingBlog.title.trim().length < 3) {
-      setError("Title must be at least 3 characters long.");
-      setLoading(false);
+    if (state.editingBlog.title.trim().length < 3) {
+      dispatch({ type: 'SET_ERROR', payload: "Title must be at least 3 characters long." });
       return;
     }
 
-    if (editingBlog.content.trim().length < 50) {
-      setError("Content must be at least 50 characters long.");
-      setLoading(false);
+    if (state.editingBlog.content.trim().length < 50) {
+      dispatch({ type: 'SET_ERROR', payload: "Content must be at least 50 characters long." });
       return;
     }
 
-    if (isYouTubeVideo && !validateYouTubeUrl(youTubeUrl)) {
-      setError("Please enter a valid YouTube URL.");
-      setLoading(false);
+    if (state.isYouTubeVideo && !validateYouTubeUrl(state.youTubeUrl)) {
+      dispatch({ type: 'SET_ERROR', payload: "Please enter a valid YouTube URL." });
       return;
     }
 
     try {
-      const blogRef = doc(db, 'blogs', editingBlog.id);
+      const blogRef = doc(db, 'blogs', state.editingBlog.id);
       let updateData = {
-        title: editingBlog.title.trim(),
-        content: editingBlog.content.trim(),
-        author: editingBlog.author.trim(),
-        tags,
+        title: state.editingBlog.title.trim(),
+        content: state.editingBlog.content.trim(),
+        author: state.editingBlog.author.trim(),
+        tags: state.tags,
         updatedAt: new Date()
       };
 
       // Handle image updates
-      if (removedImage && !newImage) {
+      if (state.removedImage && !state.newImage) {
         updateData.imageUrl = null;
-      } else if (newImage) {
-        const imageRef = ref(storage, `blog_images/${Date.now()}_${newImage.name}`);
-        await uploadBytes(imageRef, newImage);
+      } else if (state.newImage) {
+        const imageRef = ref(storage, `blog_images/${Date.now()}_${state.newImage.name}`);
+        await uploadBytes(imageRef, state.newImage);
         const imageUrl = await getDownloadURL(imageRef);
         updateData.imageUrl = imageUrl;
       }
 
       // Handle video updates
-      if (removedVideo && !newVideo && !isYouTubeVideo) {
+      if (state.removedVideo && !state.newVideo && !state.isYouTubeVideo) {
         updateData.videoUrl = null;
         updateData.isYouTubeVideo = false;
-      } else if (isYouTubeVideo && youTubeUrl) {
-        updateData.videoUrl = youTubeUrl;
+      } else if (state.isYouTubeVideo && state.youTubeUrl) {
+        updateData.videoUrl = state.youTubeUrl;
         updateData.isYouTubeVideo = true;
-      } else if (newVideo) {
-        const videoRef = ref(storage, `blog_videos/${Date.now()}_${newVideo.name}`);
-        await uploadBytes(videoRef, newVideo);
+      } else if (state.newVideo) {
+        const videoRef = ref(storage, `blog_videos/${Date.now()}_${state.newVideo.name}`);
+        await uploadBytes(videoRef, state.newVideo);
         const videoUrl = await getDownloadURL(videoRef);
         updateData.videoUrl = videoUrl;
         updateData.isYouTubeVideo = false;
@@ -167,31 +209,29 @@ const EditBlog = () => {
       await updateDoc(blogRef, updateData);
 
       // Clean up old files if they were replaced or removed
-      if ((removedImage || newImage) && editingBlog.imageUrl) {
-        const oldImageRef = ref(storage, editingBlog.imageUrl);
+      if ((state.removedImage || state.newImage) && state.editingBlog.imageUrl) {
+        const oldImageRef = ref(storage, state.editingBlog.imageUrl);
         await deleteObject(oldImageRef);
       }
 
-      if ((removedVideo || newVideo || (isYouTubeVideo && youTubeUrl)) && editingBlog.videoUrl && !editingBlog.isYouTubeVideo) {
-        const oldVideoRef = ref(storage, editingBlog.videoUrl);
+      if ((state.removedVideo || state.newVideo || (state.isYouTubeVideo && state.youTubeUrl)) && state.editingBlog.videoUrl && !state.editingBlog.isYouTubeVideo) {
+        const oldVideoRef = ref(storage, state.editingBlog.videoUrl);
         await deleteObject(oldVideoRef);
       }
 
-      setEditingBlog(null);
+      dispatch({ type: 'SET_EDITING_BLOG', payload: null });
       fetchBlogs();
     } catch (err) {
       console.error("Error updating blog: ", err);
-      setError("Failed to update blog. Please try again.");
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to update blog. Please try again." });
     }
   };
 
   const handleDelete = async (blogId) => {
     if (window.confirm("Are you sure you want to delete this blog post?")) {
-      setLoading(true);
+      dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const blogToDelete = blogs.find(blog => blog.id === blogId);
+        const blogToDelete = state.blogs.find(blog => blog.id === blogId);
         if (blogToDelete.imageUrl) {
           const imageRef = ref(storage, blogToDelete.imageUrl);
           await deleteObject(imageRef);
@@ -237,40 +277,38 @@ const EditBlog = () => {
         fetchBlogs();
       } catch (err) {
         console.error("Error deleting blog: ", err);
-        setError("Failed to delete blog. Please try again.");
-      } finally {
-        setLoading(false);
+        dispatch({ type: 'SET_ERROR', payload: "Failed to delete blog. Please try again." });
       }
     }
   };
 
-  if (loading) {
+  if (state.loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
   }
 
-  if (error) {
-    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</div>;
+  if (state.error) {
+    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{state.error}</div>;
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Edit Blogs
         </h1>
-        {editingBlog ? (
+        {state.editingBlog ? (
           <form onSubmit={handleUpdate} className="space-y-6">
             <div>
               <label htmlFor="title" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Title</label>
               <input
                 type="text"
                 id="title"
-                value={editingBlog.title}
-                onChange={(e) => setEditingBlog({...editingBlog, title: e.target.value})}
+                value={state.editingBlog.title}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_BLOG', payload: { title: e.target.value } })}
                 required
                 minLength={3}
                 className={`w-full px-3 py-2 border rounded-md ${
@@ -283,8 +321,8 @@ const EditBlog = () => {
               <input
                 type="text"
                 id="author"
-                value={editingBlog.author}
-                onChange={(e) => setEditingBlog({...editingBlog, author: e.target.value})}
+                value={state.editingBlog.author}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_BLOG', payload: { author: e.target.value } })}
                 required
                 minLength={2}
                 className={`w-full px-3 py-2 border rounded-md ${
@@ -296,8 +334,8 @@ const EditBlog = () => {
               <label htmlFor="content" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Content</label>
               <textarea
                 id="content"
-                value={editingBlog.content}
-                onChange={(e) => setEditingBlog({...editingBlog, content: e.target.value})}
+                value={state.editingBlog.content}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_BLOG', payload: { content: e.target.value } })}
                 required
                 minLength={50}
                 rows="10"
@@ -308,9 +346,9 @@ const EditBlog = () => {
             </div>
             <div>
               <label htmlFor="image" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Image</label>
-              {editingBlog.imageUrl && !removedImage && (
+              {state.editingBlog.imageUrl && !state.removedImage && (
                 <div className="mb-2">
-                  <img src={editingBlog.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
+                  <img src={state.editingBlog.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
                   <button
                     type="button"
                     onClick={handleRemoveImage}
@@ -336,24 +374,24 @@ const EditBlog = () => {
               <label className={`flex items-center mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
                 <input
                   type="checkbox"
-                  checked={isYouTubeVideo}
+                  checked={state.isYouTubeVideo}
                   onChange={(e) => {
-                    setIsYouTubeVideo(e.target.checked);
+                    dispatch({ type: 'SET_IS_YOUTUBE_VIDEO', payload: e.target.checked });
                     if (!e.target.checked) {
-                      setYouTubeUrl('');
+                      dispatch({ type: 'SET_YOUTUBE_URL', payload: '' });
                     }
                   }}
                   className="mr-2"
                 />
                 YouTube Video
               </label>
-              {isYouTubeVideo ? (
+              {state.isYouTubeVideo ? (
                 <div>
                   <div className="flex mb-2">
                     <input
                       type="url"
-                      value={youTubeUrl}
-                      onChange={(e) => setYouTubeUrl(e.target.value)}
+                      value={state.youTubeUrl}
+                      onChange={(e) => dispatch({ type: 'SET_YOUTUBE_URL', payload: e.target.value })}
                       placeholder="Enter YouTube URL"
                       className={`flex-grow px-3 py-2 border rounded-l-md ${
                         darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
@@ -369,12 +407,12 @@ const EditBlog = () => {
                       Remove
                     </button>
                   </div>
-                  {youTubeUrl && (
+                  {state.youTubeUrl && (
                     <div className="mt-2">
                       <iframe
                         width="560"
                         height="315"
-                        src={`https://www.youtube.com/embed/${extractYoutubeId(youTubeUrl)}`}
+                        src={`https://www.youtube.com/embed/${extractYoutubeId(state.youTubeUrl)}`}
                         title="YouTube video player"
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -385,9 +423,9 @@ const EditBlog = () => {
                 </div>
               ) : (
                 <div>
-                  {editingBlog.videoUrl && !removedVideo && !isYouTubeVideo && (
+                  {state.editingBlog.videoUrl && !state.removedVideo && !state.isYouTubeVideo && (
                     <div className="mb-2">
-                      <video src={editingBlog.videoUrl} className="w-64 rounded" controls />
+                      <video src={state.editingBlog.videoUrl} className="w-64 rounded" controls />
                       <button
                         type="button"
                         onClick={handleRemoveVideo}
@@ -413,7 +451,7 @@ const EditBlog = () => {
             <div>
               <label htmlFor="tags" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Tags</label>
               <div className="flex flex-wrap mb-2">
-                {tags.map((tag, index) => (
+                {state.tags.map((tag, index) => (
                   <span 
                     key={index} 
                     className={`${
@@ -434,8 +472,8 @@ const EditBlog = () => {
               <div className="flex">
                 <input
                   type="text"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
+                  value={state.newTag}
+                  onChange={(e) => dispatch({ type: 'SET_NEW_TAG', payload: e.target.value })}
                   placeholder="Add a tag"
                   className={`flex-grow px-3 py-2 border rounded-l-md ${
                     darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
@@ -455,7 +493,7 @@ const EditBlog = () => {
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={() => setEditingBlog(null)}
+                onClick={() => dispatch({ type: 'SET_EDITING_BLOG', payload: null })}
                 className={`px-4 py-2 rounded-md ${
                   darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'
                 } text-gray-800 transition duration-300`}
@@ -474,7 +512,7 @@ const EditBlog = () => {
           </form>
         ) : (
           <div className="space-y-6">
-            {blogs.map((blog) => (
+            {state.blogs.map((blog) => (
               <div key={blog.id} className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{blog.title}</h2>
                 <p className={`mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Author: {blog.author}</p>

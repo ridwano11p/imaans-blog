@@ -89,7 +89,7 @@ const ArticlePage = () => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
@@ -100,10 +100,10 @@ const ArticlePage = () => {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       {article && (
         <div className="max-w-4xl mx-auto px-4 py-12">
-          <article className={`bg-white rounded-lg shadow-lg overflow-hidden ${darkMode ? 'dark:bg-gray-800 text-gray-100' : 'text-gray-800'}`}>
+          <article className={`rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-[#90d2dc] text-gray-800'}`}>
             <div className="mb-6">
               <MediaContent
                 imageUrl={article.imageUrl}

@@ -16,7 +16,7 @@ const CreateOption = ({ title, description, link, disabled }) => {
   }
 
   return (
-    <Link to={link} className={`block p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'} transition duration-300`}>
+    <Link to={link} className={`block p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-[#90d2dc] hover:bg-[#7fbfcc]'} transition duration-300`}>
       <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{title}</h3>
       <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{description}</p>
     </Link>
@@ -37,7 +37,7 @@ const Create = () => {
   }, []);
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Create New Content

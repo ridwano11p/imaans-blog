@@ -107,7 +107,7 @@ const TagPage = () => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
@@ -118,7 +118,7 @@ const TagPage = () => {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-900'}`}>
       <div className="max-w-6xl mx-auto px-4 py-12">
         <h1 className={`text-4xl font-bold mb-8 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Posts tagged with "{tag}"

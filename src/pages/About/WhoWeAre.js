@@ -32,7 +32,7 @@ const TeamMemberModal = ({ member, darkMode, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className={`relative max-w-2xl w-full rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} p-6`}>
+      <div className={`relative max-w-2xl w-full rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'} p-6`}>
         <button
           onClick={onClose}
           className={`absolute top-2 right-2 text-2xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} hover:text-gray-500`}
@@ -69,7 +69,7 @@ const TeamMember = ({ member, darkMode, onOpenModal }) => {
   const truncatedBio = member.bio.length > 100 ? member.bio.substring(0, 100) + '...' : member.bio;
 
   return (
-    <div className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <div className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'}`}>
       <img src={member.imageUrl} alt={member.name} className="w-32 h-32 rounded-full mx-auto mb-4 object-cover" />
       <h3 className={`text-xl font-semibold mb-2 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>{member.name}</h3>
       <p className={`text-center mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{member.role}</p>
@@ -150,7 +150,7 @@ const WhoWeAre = () => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
@@ -167,7 +167,7 @@ const WhoWeAre = () => {
   const isSearchResult = new URLSearchParams(location.search).get('q') !== null;
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           {isSearchResult ? 'Search Results' : 'Who We Are'}

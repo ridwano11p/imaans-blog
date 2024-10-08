@@ -40,7 +40,7 @@ const Contact = () => {
   );
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-2xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Contact Us
@@ -49,7 +49,7 @@ const Contact = () => {
         {loading ? (
           <p className={`text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Loading contact information...</p>
         ) : contactInfo ? (
-          <div className={`p-6 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
+          <div className={`p-6 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'} shadow-lg`}>
             <ContactItem 
               icon={<FaEnvelope size={24} />} 
               label="Email" 

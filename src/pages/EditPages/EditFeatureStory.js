@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useReducer, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db, storage } from '../../firebase';
@@ -6,67 +6,117 @@ import { collection, query, getDocs, doc, updateDoc, deleteDoc, writeBatch } fro
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { FaSpinner, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 
+const initialState = {
+  stories: [],
+  loading: true,
+  error: null,
+  editingStory: null,
+  newImage: null,
+  newVideo: null,
+  isYouTubeVideo: false,
+  youTubeUrl: '',
+  tags: [],
+  newTag: '',
+  removedImage: false,
+  removedVideo: false,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_STORIES':
+      return { ...state, stories: action.payload, loading: false };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    case 'SET_EDITING_STORY':
+      return {
+        ...state,
+        editingStory: action.payload,
+        newImage: null,
+        newVideo: null,
+        isYouTubeVideo: action.payload ? action.payload.isYouTubeVideo || false : false,
+        youTubeUrl: action.payload ? action.payload.videoUrl || '' : '',
+        tags: action.payload ? action.payload.tags || [] : [],
+        removedImage: false,
+        removedVideo: false,
+      };
+    case 'UPDATE_EDITING_STORY':
+      return { ...state, editingStory: { ...state.editingStory, ...action.payload } };
+    case 'SET_NEW_IMAGE':
+      return { ...state, newImage: action.payload, removedImage: false };
+    case 'SET_NEW_VIDEO':
+      return {
+        ...state,
+        newVideo: action.payload,
+        removedVideo: false,
+        isYouTubeVideo: false,
+        youTubeUrl: '',
+      };
+    case 'SET_IS_YOUTUBE_VIDEO':
+      return { ...state, isYouTubeVideo: action.payload };
+    case 'SET_YOUTUBE_URL':
+      return { ...state, youTubeUrl: action.payload };
+    case 'SET_TAGS':
+      return { ...state, tags: action.payload };
+    case 'SET_NEW_TAG':
+      return { ...state, newTag: action.payload };
+    case 'ADD_TAG':
+      return { ...state, tags: [...state.tags, action.payload], newTag: '' };
+    case 'REMOVE_TAG':
+      return { ...state, tags: state.tags.filter(tag => tag !== action.payload) };
+    case 'SET_REMOVED_IMAGE':
+      return { ...state, removedImage: action.payload, newImage: null };
+    case 'SET_REMOVED_VIDEO':
+      return {
+        ...state,
+        removedVideo: action.payload,
+        newVideo: null,
+        isYouTubeVideo: false,
+        youTubeUrl: '',
+      };
+    default:
+      return state;
+  }
+}
+
 const EditFeatureStory = () => {
   const { darkMode } = useContext(ThemeContext);
   const navigate = useNavigate();
-  const [stories, setStories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editingStory, setEditingStory] = useState(null);
-  const [newImage, setNewImage] = useState(null);
-  const [newVideo, setNewVideo] = useState(null);
-  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
-  const [youTubeUrl, setYouTubeUrl] = useState('');
-  const [tags, setTags] = useState([]);
-  const [newTag, setNewTag] = useState('');
-  const [removedImage, setRemovedImage] = useState(false);
-  const [removedVideo, setRemovedVideo] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     fetchStories();
   }, []);
 
   const fetchStories = async () => {
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const q = query(collection(db, 'featureStories'));
       const querySnapshot = await getDocs(q);
       const storiesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStories(storiesData);
-      setLoading(false);
+      dispatch({ type: 'SET_STORIES', payload: storiesData });
     } catch (err) {
       console.error("Error fetching stories: ", err);
-      setError("Failed to fetch stories. Please try again.");
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to fetch stories. Please try again." });
     }
   };
 
   const handleEdit = (story) => {
-    setEditingStory(story);
-    setNewImage(null);
-    setNewVideo(null);
-    setIsYouTubeVideo(story.isYouTubeVideo || false);
-    setYouTubeUrl(story.videoUrl || '');
-    setTags(story.tags || []);
-    setRemovedImage(false);
-    setRemovedVideo(false);
+    dispatch({ type: 'SET_EDITING_STORY', payload: story });
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewImage(file);
-      setRemovedImage(false);
+      dispatch({ type: 'SET_NEW_IMAGE', payload: file });
     }
   };
 
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewVideo(file);
-      setRemovedVideo(false);
-      setIsYouTubeVideo(false);
-      setYouTubeUrl('');
+      dispatch({ type: 'SET_NEW_VIDEO', payload: file });
     }
   };
 
@@ -81,80 +131,72 @@ const EditFeatureStory = () => {
   };
 
   const handleAddTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag('');
+    if (state.newTag.trim() && !state.tags.includes(state.newTag.trim())) {
+      dispatch({ type: 'ADD_TAG', payload: state.newTag.trim() });
     }
   };
 
   const handleRemoveTag = (tagToRemove) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+    dispatch({ type: 'REMOVE_TAG', payload: tagToRemove });
   };
 
   const handleRemoveImage = () => {
-    setRemovedImage(true);
-    setNewImage(null);
+    dispatch({ type: 'SET_REMOVED_IMAGE', payload: true });
   };
 
   const handleRemoveVideo = () => {
-    setRemovedVideo(true);
-    setNewVideo(null);
-    setIsYouTubeVideo(false);
-    setYouTubeUrl('');
+    dispatch({ type: 'SET_REMOVED_VIDEO', payload: true });
   };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
 
-    if (editingStory.title.trim().length < 3) {
-      setError("Title must be at least 3 characters long.");
-      setLoading(false);
+    if (state.editingStory.title.trim().length < 3) {
+      dispatch({ type: 'SET_ERROR', payload: "Title must be at least 3 characters long." });
       return;
     }
 
-    if (editingStory.content.trim().length < 50) {
-      setError("Content must be at least 50 characters long.");
-      setLoading(false);
+    if (state.editingStory.content.trim().length < 50) {
+      dispatch({ type: 'SET_ERROR', payload: "Content must be at least 50 characters long." });
       return;
     }
 
-    if (isYouTubeVideo && !validateYouTubeUrl(youTubeUrl)) {
-      setError("Please enter a valid YouTube URL.");
-      setLoading(false);
+    if (state.isYouTubeVideo && !validateYouTubeUrl(state.youTubeUrl)) {
+      dispatch({ type: 'SET_ERROR', payload: "Please enter a valid YouTube URL." });
       return;
     }
 
     try {
-      const storyRef = doc(db, 'featureStories', editingStory.id);
+      const storyRef = doc(db, 'featureStories', state.editingStory.id);
       let updateData = {
-        title: editingStory.title.trim(),
-        content: editingStory.content.trim(),
-        tags,
+        title: state.editingStory.title.trim(),
+        content: state.editingStory.content.trim(),
+        tags: state.tags,
         updatedAt: new Date()
       };
 
       // Handle image updates
-      if (removedImage && !newImage) {
+      if (state.removedImage && !state.newImage) {
         updateData.imageUrl = null;
-      } else if (newImage) {
-        const imageRef = ref(storage, `feature_story_images/${Date.now()}_${newImage.name}`);
-        await uploadBytes(imageRef, newImage);
+      } else if (state.newImage) {
+        const imageRef = ref(storage, `feature_story_images/${Date.now()}_${state.newImage.name}`);
+        await uploadBytes(imageRef, state.newImage);
         const imageUrl = await getDownloadURL(imageRef);
         updateData.imageUrl = imageUrl;
       }
 
       // Handle video updates
-      if (removedVideo && !newVideo && !isYouTubeVideo) {
+      if (state.removedVideo && !state.newVideo && !state.isYouTubeVideo) {
         updateData.videoUrl = null;
         updateData.isYouTubeVideo = false;
-      } else if (isYouTubeVideo && youTubeUrl) {
-        updateData.videoUrl = youTubeUrl;
+      } else if (state.isYouTubeVideo && state.youTubeUrl) {
+        updateData.videoUrl = state.youTubeUrl;
         updateData.isYouTubeVideo = true;
-      } else if (newVideo) {
-        const videoRef = ref(storage, `feature_story_videos/${Date.now()}_${newVideo.name}`);
-        await uploadBytes(videoRef, newVideo);
+      } else if (state.newVideo) {
+        const videoRef = ref(storage, `feature_story_videos/${Date.now()}_${state.newVideo.name}`);
+        await uploadBytes(videoRef, state.newVideo);
         const videoUrl = await getDownloadURL(videoRef);
         updateData.videoUrl = videoUrl;
         updateData.isYouTubeVideo = false;
@@ -163,29 +205,27 @@ const EditFeatureStory = () => {
       await updateDoc(storyRef, updateData);
 
       // Clean up old files if they were replaced or removed
-      if ((removedImage || newImage) && editingStory.imageUrl) {
-        const oldImageRef = ref(storage, editingStory.imageUrl);
+      if ((state.removedImage || state.newImage) && state.editingStory.imageUrl) {
+        const oldImageRef = ref(storage, state.editingStory.imageUrl);
         await deleteObject(oldImageRef);
       }
 
-      if ((removedVideo || newVideo || (isYouTubeVideo && youTubeUrl)) && editingStory.videoUrl && !editingStory.isYouTubeVideo) {
-        const oldVideoRef = ref(storage, editingStory.videoUrl);
+      if ((state.removedVideo || state.newVideo || (state.isYouTubeVideo && state.youTubeUrl)) && state.editingStory.videoUrl && !state.editingStory.isYouTubeVideo) {
+        const oldVideoRef = ref(storage, state.editingStory.videoUrl);
         await deleteObject(oldVideoRef);
       }
 
-      setEditingStory(null);
+      dispatch({ type: 'SET_EDITING_STORY', payload: null });
       fetchStories();
     } catch (err) {
       console.error("Error updating story: ", err);
-      setError("Failed to update story. Please try again.");
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_ERROR', payload: "Failed to update story. Please try again." });
     }
   };
 
   const handleDelete = async (selectedStory) => {
     if (window.confirm("Are you sure you want to delete this feature story?")) {
-      setLoading(true);
+      dispatch({ type: 'SET_LOADING', payload: true });
       try {
         if (selectedStory.imageUrl) {
           const imageRef = ref(storage, selectedStory.imageUrl);
@@ -217,40 +257,38 @@ const EditFeatureStory = () => {
         fetchStories();
       } catch (err) {
         console.error("Error deleting story: ", err);
-        setError("Failed to delete story. Please try again.");
-      } finally {
-        setLoading(false);
+        dispatch({ type: 'SET_ERROR', payload: "Failed to delete story. Please try again." });
       }
     }
   };
 
-  if (loading) {
+  if (state.loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
   }
 
-  if (error) {
-    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</div>;
+  if (state.error) {
+    return <div className={`text-center mt-8 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{state.error}</div>;
   }
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <div className="max-w-6xl mx-auto px-4">
         <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Edit Feature Stories
         </h1>
-        {editingStory ? (
+        {state.editingStory ? (
           <form onSubmit={handleUpdate} className="space-y-6">
             <div>
               <label htmlFor="title" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Title</label>
               <input
                 type="text"
                 id="title"
-                value={editingStory.title}
-                onChange={(e) => setEditingStory({...editingStory, title: e.target.value})}
+                value={state.editingStory.title}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_STORY', payload: { title: e.target.value } })}
                 required
                 minLength={3}
                 className={`w-full px-3 py-2 border rounded-md ${
@@ -262,8 +300,8 @@ const EditFeatureStory = () => {
               <label htmlFor="content" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Content</label>
               <textarea
                 id="content"
-                value={editingStory.content}
-                onChange={(e) => setEditingStory({...editingStory, content: e.target.value})}
+                value={state.editingStory.content}
+                onChange={(e) => dispatch({ type: 'UPDATE_EDITING_STORY', payload: { content: e.target.value } })}
                 required
                 minLength={50}
                 rows="10"
@@ -274,9 +312,9 @@ const EditFeatureStory = () => {
             </div>
             <div>
               <label htmlFor="image" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Image</label>
-              {editingStory.imageUrl && !removedImage && (
+              {state.editingStory.imageUrl && !state.removedImage && (
                 <div className="mb-2">
-                  <img src={editingStory.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
+                  <img src={state.editingStory.imageUrl} alt="Current" className="w-32 h-32 object-cover rounded" />
                   <button
                     type="button"
                     onClick={handleRemoveImage}
@@ -302,24 +340,24 @@ const EditFeatureStory = () => {
               <label className={`flex items-center mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
                 <input
                   type="checkbox"
-                  checked={isYouTubeVideo}
+                  checked={state.isYouTubeVideo}
                   onChange={(e) => {
-                    setIsYouTubeVideo(e.target.checked);
+                    dispatch({ type: 'SET_IS_YOUTUBE_VIDEO', payload: e.target.checked });
                     if (!e.target.checked) {
-                      setYouTubeUrl('');
+                      dispatch({ type: 'SET_YOUTUBE_URL', payload: '' });
                     }
                   }}
                   className="mr-2"
                 />
                 YouTube Video
               </label>
-              {isYouTubeVideo ? (
+              {state.isYouTubeVideo ? (
                 <div>
                   <div className="flex mb-2">
                     <input
                       type="url"
-                      value={youTubeUrl}
-                      onChange={(e) => setYouTubeUrl(e.target.value)}
+                      value={state.youTubeUrl}
+                      onChange={(e) => dispatch({ type: 'SET_YOUTUBE_URL', payload: e.target.value })}
                       placeholder="Enter YouTube URL"
                       className={`flex-grow px-3 py-2 border rounded-l-md ${
                         darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
@@ -335,12 +373,12 @@ const EditFeatureStory = () => {
                       Remove
                     </button>
                   </div>
-                  {youTubeUrl && (
+                  {state.youTubeUrl && (
                     <div className="mt-2">
                       <iframe
                         width="560"
                         height="315"
-                        src={`https://www.youtube.com/embed/${extractYoutubeId(youTubeUrl)}`}
+                        src={`https://www.youtube.com/embed/${extractYoutubeId(state.youTubeUrl)}`}
                         title="YouTube video player"
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -351,9 +389,9 @@ const EditFeatureStory = () => {
                 </div>
               ) : (
                 <div>
-                  {editingStory.videoUrl && !removedVideo && !isYouTubeVideo && (
+                  {state.editingStory.videoUrl && !state.removedVideo && !state.isYouTubeVideo && (
                     <div className="mb-2">
-                      <video src={editingStory.videoUrl} className="w-64 rounded" controls />
+                      <video src={state.editingStory.videoUrl} className="w-64 rounded" controls />
                       <button
                         type="button"
                         onClick={handleRemoveVideo}
@@ -379,7 +417,7 @@ const EditFeatureStory = () => {
             <div>
               <label htmlFor="tags" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Tags</label>
               <div className="flex flex-wrap mb-2">
-                {tags.map((tag, index) => (
+                {state.tags.map((tag, index) => (
                   <span 
                     key={index} 
                     className={`${
@@ -400,8 +438,8 @@ const EditFeatureStory = () => {
               <div className="flex">
                 <input
                   type="text"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
+                  value={state.newTag}
+                  onChange={(e) => dispatch({ type: 'SET_NEW_TAG', payload: e.target.value })}
                   placeholder="Add a tag"
                   className={`flex-grow px-3 py-2 border rounded-l-md ${
                     darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
@@ -421,7 +459,7 @@ const EditFeatureStory = () => {
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={() => setEditingStory(null)}
+                onClick={() => dispatch({ type: 'SET_EDITING_STORY', payload: null })}
                 className={`px-4 py-2 rounded-md ${
                   darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'
                 } text-gray-800 transition duration-300`}
@@ -440,7 +478,7 @@ const EditFeatureStory = () => {
           </form>
         ) : (
           <div className="space-y-6">
-            {stories.map((story) => (
+            {state.stories.map((story) => (
               <div key={story.id} className={`p-6 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{story.title}</h2>
                 <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{story.content.substring(0, 150)}...</p>

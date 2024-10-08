@@ -186,7 +186,7 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+      <div className={`flex justify-center items-center h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
         <FaSpinner className={`animate-spin text-6xl ${darkMode ? 'text-white' : 'text-gray-800'}`} />
       </div>
     );
@@ -197,7 +197,7 @@ const Home = () => {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <Banner />
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Search Bar with Options */}
@@ -236,7 +236,7 @@ const Home = () => {
         {featureStory && (
           <div className="mb-16">
             <h2 className={`text-3xl font-semibold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Featured Story</h2>
-            <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'}`}>
               <MediaContent
                 imageUrl={featureStory.imageUrl}
                 videoUrl={featureStory.videoUrl}
@@ -294,7 +294,7 @@ const Home = () => {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -300 }}
                     transition={{ duration: 0.5 }}
-                    className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}
+                    className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'}`}
                   >
                     {renderLatestImpactStories()}
                   </motion.div>
