@@ -1,169 +1,207 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, storage } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ThemeContext } from '../../context/ThemeContext';
+import { db, storage } from '../../firebase';
+import { collection, addDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { FaSpinner } from 'react-icons/fa';
 
 const CreateBanner = () => {
+  const { darkMode } = useContext(ThemeContext);
+  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [mediaType, setMediaType] = useState('image');
-  const [videoType, setVideoType] = useState('upload');
-  const [media, setMedia] = useState(null);
+  const [mediaFile, setMediaFile] = useState(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [isLocalMedia, setIsLocalMedia] = useState(true);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { darkMode } = useContext(ThemeContext);
+  const [error, setError] = useState(null);
+
+  const handleMediaFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setMediaFile(file);
+    }
+  };
+
+  const validateYouTubeUrl = (url) => {
+    const regExp = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11})$/;
+    const match = url.match(regExp);
+    return match && match[1].length === 11;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
-    try {
-      let mediaUrl = '';
-      let isYouTubeVideo = false;
+    if (title.trim().length < 3) {
+      setError("Title must be at least 3 characters long.");
+      setLoading(false);
+      return;
+    }
 
-      if (mediaType === 'image' || (mediaType === 'video' && videoType === 'upload')) {
-        if (media) {
-          const storageRef = ref(storage, `banners/${media.name}`);
-          await uploadBytes(storageRef, media);
-          mediaUrl = await getDownloadURL(storageRef);
-        }
-      } else if (mediaType === 'video' && videoType === 'youtube') {
-        mediaUrl = youtubeUrl;
-        isYouTubeVideo = true;
+    if (description.trim().length < 10) {
+      setError("Description must be at least 10 characters long.");
+      setLoading(false);
+      return;
+    }
+
+    if (isLocalMedia && !mediaFile) {
+      setError("Please upload a media file.");
+      setLoading(false);
+      return;
+    }
+
+    if (!isLocalMedia) {
+      if (!youtubeUrl) {
+        setError("Please provide a YouTube URL.");
+        setLoading(false);
+        return;
       }
 
-      await addDoc(collection(db, 'banners'), {
-        title,
-        description,
-        mediaType,
-        mediaUrl,
-        isYouTubeVideo,
-        createdAt: serverTimestamp(),
-      });
+      if (!validateYouTubeUrl(youtubeUrl)) {
+        setError("Please provide a valid YouTube URL.");
+        setLoading(false);
+        return;
+      }
+    }
 
-      setLoading(false);
+    try {
+      let mediaUrl = youtubeUrl;
+      let mediaType = isLocalMedia ? (mediaFile.type.startsWith('image/') ? 'image' : 'video') : 'youtube';
+
+      if (isLocalMedia) {
+        const mediaRef = ref(storage, `bannerstorage/${mediaFile.name}`);
+        await uploadBytes(mediaRef, mediaFile);
+        mediaUrl = await getDownloadURL(mediaRef);
+      }
+
+      const bannerData = {
+        title: title.trim(),
+        description: description.trim(),
+        mediaUrl,
+        mediaType,
+        isYouTube: !isLocalMedia,
+        youtubeId: !isLocalMedia ? youtubeUrl.match(/[a-zA-Z0-9_-]{11}/)[0] : null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await addDoc(collection(db, 'banners'), bannerData);
       navigate('/');
-    } catch (error) {
-      console.error('Error creating banner: ', error);
+    } catch (err) {
+      console.error("Error creating banner: ", err);
+      setError("Failed to create banner. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900 text-white' : 'bg-[#90d2dc] text-gray-900'}`}>
-      <div className="max-w-2xl mx-auto px-4">
-        <h1 className="text-3xl font-semibold mb-6">Create New Banner</h1>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="title" className="block mb-2">Title</label>
+    <div className={`min-h-screen py-12 ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
+      <div className="max-w-4xl mx-auto px-4">
+        <h1 className={`text-4xl font-bold mb-8 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+          Create New Banner
+        </h1>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="title" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Title</label>
             <input
               type="text"
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className={`w-full p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
               required
+              minLength={3}
+              className={`w-full px-3 py-2 border rounded-md ${
+                darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+              }`}
             />
           </div>
-          <div className="mb-4">
-            <label htmlFor="description" className="block mb-2">Description</label>
+          <div>
+            <label htmlFor="description" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Description</label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className={`w-full p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
-              rows="4"
               required
+              minLength={10}
+              rows="5"
+              className={`w-full px-3 py-2 border rounded-md ${
+                darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+              }`}
             ></textarea>
           </div>
-          <div className="mb-4">
-            <label className="block mb-2">Media Type</label>
-            <div className="flex items-center space-x-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  value="image"
-                  checked={mediaType === 'image'}
-                  onChange={() => setMediaType('image')}
-                  className="form-radio"
-                />
-                <span className="ml-2">Image</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  value="video"
-                  checked={mediaType === 'video'}
-                  onChange={() => setMediaType('video')}
-                  className="form-radio"
-                />
-                <span className="ml-2">Video</span>
-              </label>
-            </div>
+          <div className="flex items-center space-x-4">
+            <label className={`flex items-center ${darkMode ? 'text-white' : 'text-gray-700'}`}>
+              <input
+                type="checkbox"
+                checked={isLocalMedia}
+                onChange={() => setIsLocalMedia(true)}
+                className="mr-2"
+              />
+              Upload Local Media
+            </label>
+            <label className={`flex items-center ${darkMode ? 'text-white' : 'text-gray-700'}`}>
+              <input
+                type="checkbox"
+                checked={!isLocalMedia}
+                onChange={() => setIsLocalMedia(false)}
+                className="mr-2"
+              />
+              Add YouTube Video
+            </label>
           </div>
-          {mediaType === 'video' && (
-            <div className="mb-4">
-              <label className="block mb-2">Video Type</label>
-              <div className="flex items-center space-x-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    value="upload"
-                    checked={videoType === 'upload'}
-                    onChange={() => setVideoType('upload')}
-                    className="form-radio"
-                  />
-                  <span className="ml-2">Upload Video</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    value="youtube"
-                    checked={videoType === 'youtube'}
-                    onChange={() => setVideoType('youtube')}
-                    className="form-radio"
-                  />
-                  <span className="ml-2">YouTube URL</span>
-                </label>
-              </div>
-            </div>
-          )}
-          {mediaType === 'image' || (mediaType === 'video' && videoType === 'upload') ? (
-            <div className="mb-4">
-              <label htmlFor="media" className="block mb-2">{mediaType === 'image' ? 'Image' : 'Video'}</label>
+          {isLocalMedia ? (
+            <div>
+              <label htmlFor="mediaFile" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>Upload Media File</label>
               <input
                 type="file"
-                id="media"
-                onChange={(e) => setMedia(e.target.files[0])}
-                className={`w-full p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
-                accept={mediaType === 'image' ? 'image/*' : 'video/*'}
-                required
+                id="mediaFile"
+                onChange={handleMediaFileChange}
+                accept="image/*,video/*"
+                className={`w-full px-3 py-2 border rounded-md ${
+                  darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                }`}
               />
             </div>
           ) : (
-            <div className="mb-4">
-              <label htmlFor="youtubeUrl" className="block mb-2">YouTube URL</label>
+            <div>
+              <label htmlFor="youtubeUrl" className={`block mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>YouTube Video URL</label>
               <input
                 type="url"
                 id="youtubeUrl"
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
-                className={`w-full p-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
-                required
+                placeholder="https://www.youtube.com/watch?v=..."
+                className={`w-full px-3 py-2 border rounded-md ${
+                  darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-300'
+                }`}
               />
             </div>
           )}
           <button
             type="submit"
-            className={`px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
             disabled={loading}
+            className={`w-full px-4 py-2 rounded-md ${
+              darkMode
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            } transition duration-300 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {loading ? 'Creating...' : 'Create Banner'}
+            {loading ? (
+              <FaSpinner className="animate-spin mx-auto" />
+            ) : (
+              'Create Banner'
+            )}
           </button>
         </form>
+        {error && (
+          <div className={`mt-4 p-4 rounded-md ${darkMode ? 'bg-red-800 text-red-100' : 'bg-red-100 text-red-800'}`}>
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
