@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/imaans-blog/static/css/main.ba53f270.css",
-    "main.js": "/imaans-blog/static/js/main.d14742a6.js",
+    "main.css": "/imaans-blog/static/css/main.ebb7214d.css",
+    "main.js": "/imaans-blog/static/js/main.05cc6d23.js",
     "static/js/453.e12742a6.chunk.js": "/imaans-blog/static/js/453.e12742a6.chunk.js",
     "static/media/sitelogo.png": "/imaans-blog/static/media/sitelogo.c01edc60a250359f69bb.png",
     "index.html": "/imaans-blog/index.html",
-    "main.ba53f270.css.map": "/imaans-blog/static/css/main.ba53f270.css.map",
-    "main.d14742a6.js.map": "/imaans-blog/static/js/main.d14742a6.js.map",
+    "main.ebb7214d.css.map": "/imaans-blog/static/css/main.ebb7214d.css.map",
+    "main.05cc6d23.js.map": "/imaans-blog/static/js/main.05cc6d23.js.map",
     "453.e12742a6.chunk.js.map": "/imaans-blog/static/js/453.e12742a6.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.ba53f270.css",
-    "static/js/main.d14742a6.js"
+    "static/css/main.ebb7214d.css",
+    "static/js/main.05cc6d23.js"
   ]
 }
