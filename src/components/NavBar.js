@@ -28,26 +28,34 @@ const SubMenu = ({ title, items, isOpen, toggleMenu, closeMenu, isMobile }) => {
   return (
     <div className={`${isMobile ? 'w-full' : 'relative group'}`}>
       <button
-        onClick={toggleMenu}
-        className="flex items-center text-white hover:text-gray-200 whitespace-nowrap"
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleMenu();
+        }}
+        className="flex items-center justify-between w-full text-white hover:text-gray-200 py-2"
       >
-        {title}
+        <span>{title}</span>
         <span className="ml-1">{isOpen ? <FaChevronUp /> : <FaChevronDown />}</span>
       </button>
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`${isMobile ? 'w-full' : 'absolute left-0 mt-2'} py-2 bg-white rounded-md shadow-xl z-20 min-w-max`}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className={`${isMobile ? 'w-full bg-teal-800' : 'absolute left-0 mt-2 bg-white rounded-md shadow-xl'} overflow-hidden z-20`}
           >
             {items.map((item, index) => (
               <Link
                 key={index}
                 to={item.link}
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap"
-                onClick={closeMenu}
+                className={`block px-4 py-2 text-sm ${isMobile ? 'text-white hover:bg-teal-600' : 'text-gray-700 hover:bg-gray-100'} whitespace-nowrap`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isMobile) {
+                    closeMenu();
+                  }
+                }}
               >
                 {item.name}
               </Link>
@@ -72,7 +80,7 @@ const NavBar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.submenu-container')) {
+      if (!event.target.closest('.mobile-menu-container') && !event.target.closest('.hamburger-button')) {
         dispatch({ type: 'CLOSE_ALL' });
       }
     };
@@ -106,11 +114,11 @@ const NavBar = () => {
   ];
 
   const docsItems = [
-    { name: 'Documentary', link: '/documentaries/documentary' },
+    { name: 'Videos', link: '/documentaries/videos' },
   ];
 
   const researchItems = [
-    { name: 'Bookshelf', link: '/research/bookshelf' },
+    { name: 'Bookshelf', link: '/research/pdfs' },
   ];
 
   const galleryItems = [
@@ -120,7 +128,7 @@ const NavBar = () => {
   const navbarClasses = darkMode ? 'bg-gray-900' : 'bg-teal-700';
 
   return (
-    <nav className={`${navbarClasses} w-full`}>
+    <nav className={`${navbarClasses} w-full sticky top-0 z-50`}>
       {/* Desktop Navigation */}
       <div className="hidden lg:block">
         <div className="max-w-7xl mx-auto px-4">
@@ -170,7 +178,7 @@ const NavBar = () => {
                 isMobile={false}
               />
             </div>
-            <Link to="/impact-stories" className="text-white hover:text-gray-200">Impact Stories</Link>
+            <Link to="/impact-stories" className="text-white hover:text-gray-200">Stories</Link>
             <div className="submenu-container">
               <SubMenu
                 title="Documentary"
@@ -215,78 +223,91 @@ const NavBar = () => {
             </div>
             <span className="text-white text-xl font-bold group-hover:text-gray-200 transition-colors duration-200 whitespace-nowrap">Travel To End FGM</span>
           </Link>
-          <button onClick={() => dispatch({ type: 'TOGGLE_MOBILE_MENU' })} className="text-white p-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              dispatch({ type: 'TOGGLE_MOBILE_MENU' });
+            }}
+            className="text-white p-2 hamburger-button"
+          >
             {state.isMobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
           </button>
         </div>
 
         {/* Mobile Menu */}
-        {state.isMobileMenuOpen && (
-          <div className="w-full">
-            <div className="flex flex-col space-y-2 p-4">
-              <Link to="/" className="text-white hover:text-gray-200" onClick={closeMenu}>Home</Link>
-              <Link to="/search-page" className="text-white hover:text-gray-200" onClick={closeMenu}>Search</Link>
-              <SubMenu
-                title="About Us"
-                items={aboutUsItems}
-                isOpen={state.openMenu === 'aboutUs'}
-                toggleMenu={() => toggleMenu('aboutUs')}
-                closeMenu={closeMenu}
-                isMobile={true}
-              />
-              <Link to="/impact-stories" className="text-white hover:text-gray-200" onClick={closeMenu}>Impact Stories</Link>
-              <SubMenu
-                title="Documentary"
-                items={docsItems}
-                isOpen={state.openMenu === 'docs'}
-                toggleMenu={() => toggleMenu('docs')}
-                closeMenu={closeMenu}
-                isMobile={true}
-              />
-              <SubMenu
-                title="Research and Reports"
-                items={researchItems}
-                isOpen={state.openMenu === 'research'}
-                toggleMenu={() => toggleMenu('research')}
-                closeMenu={closeMenu}
-                isMobile={true}
-              />
-              <SubMenu
-                title="Gallery"
-                items={galleryItems}
-                isOpen={state.openMenu === 'gallery'}
-                toggleMenu={() => toggleMenu('gallery')}
-                closeMenu={closeMenu}
-                isMobile={true}
-              />
-              <Link to="/contact" className="text-white hover:text-gray-200" onClick={closeMenu}>Contact Us</Link>
-              {user && (
-                <>
-                  <Link to="/create" className="text-white hover:text-gray-200" onClick={closeMenu}>Create</Link>
-                  <Link to="/edit" className="text-white hover:text-gray-200" onClick={closeMenu}>Edit</Link>
-                </>
-              )}
-              <div className="flex items-center justify-between mt-4">
-                <button onClick={toggleDarkMode} className="text-white p-2">
-                  {darkMode ? <FaSun size={24} /> : <FaMoon size={24} />}
-                </button>
-                {user ? (
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      closeMenu();
-                    }}
-                    className="text-white hover:text-gray-200"
-                  >
-                    Logout
-                  </button>
-                ) : (
-                  <Link to="/login" className="text-white hover:text-gray-200" onClick={closeMenu}>Login</Link>
+        <AnimatePresence>
+          {state.isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="w-full mobile-menu-container overflow-hidden"
+            >
+              <div className="flex flex-col space-y-2 p-4 bg-teal-800">
+                <Link to="/" className="text-white hover:text-gray-200 py-2" onClick={(e) => e.stopPropagation()}>Home</Link>
+                <Link to="/search-page" className="text-white hover:text-gray-200 py-2" onClick={(e) => e.stopPropagation()}>Search</Link>
+                <SubMenu
+                  title="About Us"
+                  items={aboutUsItems}
+                  isOpen={state.openMenu === 'aboutUs'}
+                  toggleMenu={() => toggleMenu('aboutUs')}
+                  closeMenu={closeMenu}
+                  isMobile={true}
+                />
+                <Link to="/impact-stories" className="text-white hover:text-gray-200 py-2" onClick={(e) => e.stopPropagation()}>Stories</Link>
+                <SubMenu
+                  title="Documentary"
+                  items={docsItems}
+                  isOpen={state.openMenu === 'docs'}
+                  toggleMenu={() => toggleMenu('docs')}
+                  closeMenu={closeMenu}
+                  isMobile={true}
+                />
+                <SubMenu
+                  title="Research and Reports"
+                  items={researchItems}
+                  isOpen={state.openMenu === 'research'}
+                  toggleMenu={() => toggleMenu('research')}
+                  closeMenu={closeMenu}
+                  isMobile={true}
+                />
+                <SubMenu
+                  title="Gallery"
+                  items={galleryItems}
+                  isOpen={state.openMenu === 'gallery'}
+                  toggleMenu={() => toggleMenu('gallery')}
+                  closeMenu={closeMenu}
+                  isMobile={true}
+                />
+                <Link to="/contact" className="text-white hover:text-gray-200 py-2" onClick={(e) => e.stopPropagation()}>Contact Us</Link>
+                {user && (
+                  <>
+                    <Link to="/create" className="text-white hover:text-gray-200 py-2" onClick={(e) => e.stopPropagation()}>Create</Link>
+                    <Link to="/edit" className="text-white hover:text-gray-200 py-2" onClick={(e) => e.stopPropagation()}>Edit</Link>
+                  </>
                 )}
+                <div className="flex items-center justify-between mt-4">
+                  <button onClick={(e) => { e.stopPropagation(); toggleDarkMode(); }} className="text-white p-2">
+                    {darkMode ? <FaSun size={24} /> : <FaMoon size={24} />}
+                  </button>
+                  {user ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLogout();
+                      }}
+                      className="text-white hover:text-gray-200"
+                    >
+                      Logout
+                    </button>
+                  ) : (
+                    <Link to="/login" className="text-white hover:text-gray-200" onClick={(e) => e.stopPropagation()}>Login</Link>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );
