@@ -197,9 +197,9 @@ const Home = () => {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
+    <div className={`min-h-screen w-full ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <Banner />
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div className="w-full px-4 py-12 md:max-w-6xl md:mx-auto">
         {/* Search Bar with Options */}
         <div className="mb-16">
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row">
@@ -282,7 +282,7 @@ const Home = () => {
             <div className="relative flex items-center">
               <button
                 onClick={prevSlide}
-                className="absolute left-0 z-10 -ml-12 bg-white rounded-full p-2 focus:outline-none shadow-md"
+                className="absolute left-0 z-10 -ml-4 sm:-ml-12 bg-white rounded-full p-2 focus:outline-none shadow-md"
               >
                 <FaChevronLeft size={24} className="text-green-600" />
               </button>
@@ -302,7 +302,7 @@ const Home = () => {
               </div>
               <button
                 onClick={nextSlide}
-                className="absolute right-0 z-10 -mr-12 bg-white rounded-full p-2 focus:outline-none shadow-md"
+                className="absolute right-0 z-10 -mr-4 sm:-mr-12 bg-white rounded-full p-2 focus:outline-none shadow-md"
               >
                 <FaChevronRight size={24} className="text-green-600" />
               </button>

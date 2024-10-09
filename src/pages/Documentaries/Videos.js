@@ -1,8 +1,9 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { ThemeContext } from '../../context/ThemeContext';
 import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { FaSpinner, FaPlay, FaTimes } from 'react-icons/fa';
+import VideoPlayer from '../../components/VideoPlayer';
 
 const VideoCard = ({ video, darkMode, onPlay }) => {
   const thumbnailUrl = video.isYouTube 
@@ -10,7 +11,7 @@ const VideoCard = ({ video, darkMode, onPlay }) => {
     : (video.thumbnailUrl || video.videoUrl);
 
   return (
-    <div className={`rounded-lg shadow-md overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <div className={`rounded-lg shadow-md overflow-hidden transition-transform duration-300 transform hover:scale-105 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
       <div className="relative">
         <img src={thumbnailUrl} alt={video.title} className="w-full h-48 object-cover" />
         <button
@@ -28,54 +29,22 @@ const VideoCard = ({ video, darkMode, onPlay }) => {
   );
 };
 
-const VideoModal = ({ video, onClose, darkMode }) => {
-  const videoRef = useRef(null);
-
-  useEffect(() => {
-    const handleEsc = (event) => {
-      if (event.keyCode === 27) onClose();
-    };
-    window.addEventListener('keydown', handleEsc);
-
-    return () => {
-      window.removeEventListener('keydown', handleEsc);
-    };
-  }, [onClose]);
-
-  const handleClose = () => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-    onClose();
-  };
-
+const VideoModal = ({ video, onClose }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="relative w-full max-w-4xl">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 md:p-8">
+      <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
         <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+          onClick={onClose}
+          className="absolute -top-10 right-0 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition duration-300 z-10"
         >
           <FaTimes size={24} />
         </button>
-        {video.isYouTube ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${video.youtubeId}`}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="w-full aspect-video rounded-lg"
-          ></iframe>
-        ) : (
-          <video
-            ref={videoRef}
-            src={video.videoUrl}
-            controls
-            className="w-full rounded-lg"
-          >
-            Your browser does not support the video tag.
-          </video>
-        )}
+        <div className="aspect-square w-full">
+          <VideoPlayer
+            videoUrl={video.isYouTube ? `https://www.youtube.com/watch?v=${video.youtubeId}` : video.videoUrl}
+            isYouTubeVideo={video.isYouTube}
+          />
+        </div>
       </div>
     </div>
   );
@@ -139,7 +108,7 @@ const Videos = () => {
           Documentaries
         </h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {videos.map((video) => (
             <VideoCard
               key={video.id}
@@ -154,7 +123,6 @@ const Videos = () => {
         <VideoModal
           video={activeVideo}
           onClose={handleCloseVideo}
-          darkMode={darkMode}
         />
       )}
     </div>
