@@ -3,7 +3,6 @@ import { ThemeContext } from '../../context/ThemeContext';
 import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { FaSpinner, FaPlay, FaTimes } from 'react-icons/fa';
-import VideoPlayer from '../../components/VideoPlayer';
 
 const VideoCard = ({ video, darkMode, onPlay }) => {
   const thumbnailUrl = video.isYouTube 
@@ -29,21 +28,45 @@ const VideoCard = ({ video, darkMode, onPlay }) => {
   );
 };
 
-const VideoModal = ({ video, onClose }) => {
+const YouTubeEmbed = ({ videoId }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 md:p-8">
-      <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
-        <button
-          onClick={onClose}
-          className="absolute -top-10 right-0 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition duration-300 z-10"
-        >
-          <FaTimes size={24} />
-        </button>
-        <div className="aspect-square w-full">
-          <VideoPlayer
-            videoUrl={video.isYouTube ? `https://www.youtube.com/watch?v=${video.youtubeId}` : video.videoUrl}
-            isYouTubeVideo={video.isYouTube}
-          />
+    <div className="w-full h-0 pb-[56.25%] relative">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        title="YouTube video player"
+        className="absolute top-0 left-0 w-full h-full"
+      ></iframe>
+    </div>
+  );
+};
+
+const VideoModal = ({ video, onClose }) => {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition duration-300 z-10"
+        aria-label="Close"
+      >
+        <FaTimes size={24} />
+      </button>
+      <div className="w-full max-w-4xl">
+        <div className="w-full md:w-3/4 mx-auto">
+          {video.isYouTube ? (
+            <YouTubeEmbed videoId={video.youtubeId} />
+          ) : (
+            <video src={video.videoUrl} controls className="w-full" />
+          )}
         </div>
       </div>
     </div>
