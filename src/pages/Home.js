@@ -126,8 +126,8 @@ const Home = () => {
           <h3 className={`text-2xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             Discover More Impact Stories
           </h3>
-          <Link 
-            to="/impact-stories" 
+          <Link
+            to="/impact-stories"
             className={`inline-block px-6 py-3 rounded-md ${
               darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'
             } text-white transition duration-300`}
@@ -171,8 +171,8 @@ const Home = () => {
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No tags available</p>
             )}
           </div>
-          <Link 
-            to={`/article/${story?.id}`} 
+          <Link
+            to={`/article/${story?.id}`}
             className={`inline-block px-6 py-3 rounded-md ${
               darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'
             } text-white transition duration-300`}
@@ -197,7 +197,7 @@ const Home = () => {
   }
 
   return (
-    <div className={`min-h-screen w-full ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
+    <div className={`min-h-screen w-full overflow-x-hidden ${darkMode ? 'bg-gray-900' : 'bg-[#90d2dc]'}`}>
       <Banner />
       <div className="w-full px-4 py-12 md:max-w-6xl md:mx-auto">
         {/* Search Bar with Options */}
