@@ -12,7 +12,7 @@ import PrivateRoute from './PrivateRoute';
 import ArticlePage from '../pages/ArticlePage';
 import TagPage from '../pages/TagPage';
 import SearchResults from '../pages/SearchResults';
-import Search from '../pages/Search'; // Import the new Search component
+import Search from '../pages/Search';
 
 // About Us pages
 import WhoWeAre from '../pages/About/WhoWeAre';
@@ -50,8 +50,12 @@ import EditBanner from '../pages/EditPages/EditBanner';
 import EditFeatureStory from '../pages/EditPages/EditFeatureStory';
 
 const AppNavigator = () => {
+  // Determine the basename based on the environment
+  const isProduction = process.env.NODE_ENV === 'production';
+  const basename = isProduction ? '' : '/imaans-blog';
+
   return (
-    <Router basename="/imaans-blog">
+    <Router basename={basename}>
       <NavBar />
       <Routes>
         <Route path="/" element={<><Home /><Footer /></>} />
@@ -66,7 +70,7 @@ const AppNavigator = () => {
         <Route path="/article/:id" element={<><ArticlePage /><Footer /></>} />
         <Route path="/tag/:tag" element={<><TagPage /><Footer /></>} />
         <Route path="/search" element={<><SearchResults /><Footer /></>} />
-        <Route path="/search-page" element={<><Search /><Footer /></>} /> {/* Add the new Search route */}
+        <Route path="/search-page" element={<><Search /><Footer /></>} />
         <Route path="/create" element={
           <PrivateRoute>
             <Create />
