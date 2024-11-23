@@ -31,16 +31,16 @@ const TeamMemberModal = ({ member, darkMode, onClose }) => {
   ].filter(item => item.link);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className={`relative max-w-2xl w-full rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'} p-6`}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className={`relative max-w-2xl w-full rounded-lg shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-[#90d2dc]'} p-6 m-4 max-h-[90vh] overflow-y-auto`}>
         <button
           onClick={onClose}
-          className={`absolute top-2 right-2 text-2xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} hover:text-gray-500`}
+          className={`sticky top-0 float-right text-2xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} hover:text-gray-500 z-10`}
         >
           &times;
         </button>
-        <div className="flex flex-col md:flex-row">
-          <div className="md:w-1/3 mb-4 md:mb-0">
+        <div className="flex flex-col md:flex-row space-y-4 md:space-y-0">
+          <div className="md:w-1/3">
             <img src={member.imageUrl} alt={member.name} className="w-40 h-40 rounded-full mx-auto object-cover" />
           </div>
           <div className="md:w-2/3 md:pl-6">
@@ -49,7 +49,7 @@ const TeamMemberModal = ({ member, darkMode, onClose }) => {
             <div className={`mb-4 whitespace-pre-wrap ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{member.bio}</div>
           </div>
         </div>
-        <div className="flex justify-end mt-4 space-x-2">
+        <div className="flex justify-end mt-4 space-x-2 sticky bottom-0 bg-inherit py-2">
           {socialMediaLinks.length > 0 ? (
             socialMediaLinks.map((item, index) => (
               <SocialMediaButton key={index} icon={item.icon} link={item.link} darkMode={darkMode} />
